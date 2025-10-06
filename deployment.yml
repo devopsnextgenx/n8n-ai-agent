@@ -1,0 +1,234 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: n8n-stack
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-pvc
+  namespace: n8n-stack
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis-pvc
+  namespace: n8n-stack
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: n8n-pvc
+  namespace: n8n-stack
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: n8n-secrets
+  namespace: n8n-stack
+type: Opaque
+stringData:
+  MYSQL_ROOT_PASSWORD: "p@ssw0rd"
+  MYSQL_DATABASE: "n8n"
+  MYSQL_USER: "admn"
+  MYSQL_PASSWORD: "p@ssw0rd"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql
+  namespace: n8n-stack
+spec:
+  selector:
+    matchLabels:
+      app: mysql
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+        - name: mysql
+          image: mysql:8.0
+          ports:
+            - containerPort: 3306
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: n8n-secrets
+                  key: MYSQL_ROOT_PASSWORD
+            - name: MYSQL_DATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: n8n-secrets
+                  key: MYSQL_DATABASE
+            - name: MYSQL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: n8n-secrets
+                  key: MYSQL_USER
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: n8n-secrets
+                  key: MYSQL_PASSWORD
+          volumeMounts:
+            - name: mysql-storage
+              mountPath: /var/lib/mysql
+      volumes:
+        - name: mysql-storage
+          persistentVolumeClaim:
+            claimName: mysql-pvc
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+  namespace: n8n-stack
+spec:
+  selector:
+    app: mysql
+  ports:
+    - port: 3306
+      targetPort: 3306
+  clusterIP: None # headless, good for stateful DB
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: n8n-stack
+spec:
+  selector:
+    matchLabels:
+      app: redis
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7.2
+          args: ["redis-server", "--appendonly", "yes"]
+          ports:
+            - containerPort: 6379
+          volumeMounts:
+            - name: redis-storage
+              mountPath: /data
+      volumes:
+        - name: redis-storage
+          persistentVolumeClaim:
+            claimName: redis-pvc
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: n8n-stack
+spec:
+  selector:
+    app: redis
+  ports:
+    - port: 6379
+      targetPort: 6379
+  clusterIP: None
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: n8n
+  namespace: n8n-stack
+spec:
+  selector:
+    matchLabels:
+      app: n8n
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: n8n
+    spec:
+      containers:
+        - name: n8n
+          image: docker.n8n.io/n8nio/n8n
+          ports:
+            - containerPort: 5678
+          env:
+            - name: DB_TYPE
+              value: "mysqldb"
+            - name: DB_MYSQLDB_HOST
+              value: "mysql"
+            - name: DB_MYSQLDB_PORT
+              value: "3306"
+            - name: DB_MYSQLDB_DATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: n8n-secrets
+                  key: MYSQL_DATABASE
+            - name: DB_MYSQLDB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: n8n-secrets
+                  key: MYSQL_USER
+            - name: DB_MYSQLDB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: n8n-secrets
+                  key: MYSQL_PASSWORD
+            - name: QUEUE_BULL_REDIS_HOST
+              value: "redis"
+            - name: QUEUE_BULL_REDIS_PORT
+              value: "6379"
+          volumeMounts:
+            - name: n8n-storage
+              mountPath: /home/node/.n8n
+      volumes:
+        - name: n8n-storage
+          persistentVolumeClaim:
+            claimName: n8n-pvc
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: n8n
+  namespace: n8n-stack
+spec:
+  selector:
+    app: n8n
+  ports:
+    - port: 5678
+      targetPort: 5678
+  type: LoadBalancer

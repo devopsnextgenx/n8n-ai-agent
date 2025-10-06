@@ -1,0 +1,278 @@
+{
+  "name": "temp-converter",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Request: {{ $json.chatInput || $json.message || \"\" }}\nSource: {{  $json.message?.length > 0 ? \"MQTT\": \"Chat\" }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are a helpful assistant, your response need to be structured as below,\n\nIf request is for temp conversion,\n\n{\n  \"source\": \"Chat or MQTT\",\n  \"degree\": 0,\n  \"fahrenheit\": 32\n}\n\nif request is for data from remote server query,\n\n{\n  \"source\": \"Chat or MQTT\",\n  \"command\": \"hostname\",\n  \"remoteResponse\": \"xxxxx\"\n}\n\nif request is for both temp conversion and remote server data then,\n\n{\n  \"source\": \"Chat or MQTT\",\n  \"degree\": 0,\n  \"fahrenheit\": 32,\n  \"command\": \"linux command\",\n  \"remoteResponse\": \"xxxxx\"\n}\n\nRespond with json response alone and do not output any other text or think tag\n\n"
+        }
+      },
+      "id": "59750ec5-1370-4a05-b97b-120ee4ba4b67",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        144,
+        80
+      ],
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "445944f8-4a48-4987-94a4-141c30864495",
+      "name": "When chat message received",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "position": [
+        -64,
+        192
+      ],
+      "webhookId": "3e83c4d5-71cf-42f4-a867-bc754f5a35b5",
+      "typeVersion": 1.3
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"$schema\": \"http://json-schema.org/draft-07/schema#\",\n  \"type\": \"object\",\n  \"properties\": {\n    \"source\": {\n      \"type\": \"string\",\n      \"enum\": [\"Chat\", \"MQTT\"],\n      \"description\": \"The source of the request\"\n    },\n    \"degree\": {\n      \"type\": \"number\",\n      \"description\": \"Temperature in Celsius\"\n    },\n    \"fahrenheit\": {\n      \"type\": \"number\",\n      \"description\": \"Temperature in Fahrenheit\"\n    },\n    \"command\": {\n      \"type\": \"string\",\n      \"description\": \"Command to run on remote server\"\n    },\n    \"remoteResponse\": {\n      \"type\": \"string\",\n      \"description\": \"Response from SSH server\"\n    }\n  },\n  \"required\": [\"source\"]\n}"
+      },
+      "id": "2b3588ca-89d2-4d93-bc9c-22d763c19455",
+      "name": "Structured Output Parser",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "position": [
+        480,
+        320
+      ],
+      "typeVersion": 1.3
+    },
+    {
+      "parameters": {
+        "topics": "sensor/temperature",
+        "options": {
+          "jsonParseBody": true
+        }
+      },
+      "id": "5343d36d-04d3-430d-bc30-c5e78f056daa",
+      "name": "MQTT Trigger",
+      "type": "n8n-nodes-base.mqttTrigger",
+      "position": [
+        -288,
+        0
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "mqtt": {
+          "id": "QW8DLSOR5OkP1397",
+          "name": "MQTT account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "qwen3:latest",
+        "options": {}
+      },
+      "id": "5b420ae1-40ff-4871-9593-eea7f38ad944",
+      "name": "qwen3",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "position": [
+        160,
+        320
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "ollamaApi": {
+          "id": "5xLoLXEjNmerrDm4",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"message\": \"{{$json.message.request}}\",\n  \"sessionId\": \"{{$json.message.sessionId}}\"\n}\n",
+        "options": {}
+      },
+      "id": "561685ae-fe84-40d2-aaf6-989230d64b9a",
+      "name": "format-mqtt-request",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        -64,
+        0
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "guildId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "1424414389532098698",
+          "cachedResultUrl": "https://discord.com/channels/1424414389532098698",
+          "cachedResultName": "devopsnextgenx"
+        },
+        "channelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "1424414396213497989",
+          "cachedResultUrl": "https://discord.com/channels/1424414389532098698/1424414396213497989",
+          "cachedResultName": "general"
+        },
+        "content": "=Answered {{ $json.output.source }} is {{ $json.output.degree }}C and {{ $json.output.fahrenheit }}F or Remote hostname is {{ $json.output.remoteResponse }}",
+        "options": {}
+      },
+      "id": "d9302d5e-e98c-4a2b-a37f-941069cf7f4f",
+      "name": "temp-conversion-response",
+      "type": "n8n-nodes-base.discord",
+      "position": [
+        624,
+        96
+      ],
+      "webhookId": "e8c87bda-6b60-46b6-b1ab-01ebcded49e1",
+      "typeVersion": 2,
+      "credentials": {
+        "discordBotApi": {
+          "id": "g4H4SSybBvXy1Acz",
+          "name": "Discord Bot account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "description": "Call this tool to get hostname of the server\n\nInclude response from this node as remoteResponse in json response",
+        "workflowId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "aLMTOn7GbIFeIllh",
+          "cachedResultUrl": "/workflow/aLMTOn7GbIFeIllh",
+          "cachedResultName": "_ssh-n8n-workflow"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "command": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('command', `Command to run to get needed information from remote host`, 'string') }}"
+          },
+          "matchingColumns": [
+            "command"
+          ],
+          "schema": [
+            {
+              "id": "command",
+              "type": "string",
+              "display": true,
+              "removed": false,
+              "required": false,
+              "displayName": "command",
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "id": "e8369d61-87f1-46de-9986-10370c1fd0db",
+      "name": "Call '_ssh-n8n-workflow'",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "position": [
+        288,
+        320
+      ],
+      "typeVersion": 2.2
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "qwen3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "temp-conversion-response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MQTT Trigger": {
+      "main": [
+        [
+          {
+            "node": "format-mqtt-request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "format-mqtt-request": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call '_ssh-n8n-workflow'": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "803dd2aa-697b-4236-b403-83ff3b9c85a4",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e48c4a814881b1418af800a3fbbed8290840cab10cff0b5b090957237a9c47f1"
+  },
+  "id": "gb3jwhmpCW7ye99F",
+  "tags": []
+}

@@ -1,5 +1,5 @@
 {
-  "name": "_ssh-n8n-workflow",
+  "name": "ssh-n8n-workflow",
   "nodes": [
     {
       "parameters": {

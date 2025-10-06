@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   n8n:
     image: docker.n8n.io/n8nio/n8n
@@ -8,7 +6,7 @@ services:
     ports:
       - "5678:5678"
     volumes:
-      - n8n_data:/home/node/.n8n
+      - ./data/n8n-data:/home/node/.n8n
     environment:
       - DB_TYPE=mysqldb
       - DB_MYSQLDB_HOST=mysql
@@ -26,6 +24,7 @@ services:
     depends_on:
       - mysql
       - redis
+      - mqtt
     networks:
       - n8n-network
 
@@ -41,8 +40,8 @@ services:
       - MYSQL_USER=admn
       - MYSQL_PASSWORD=p@ssw0rd
     volumes:
-      - ./mysql-data:/var/lib/mysql
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./data/mysql-data:/var/lib/mysql
+      - .config/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
     command: --bind-address=0.0.0.0 --default-authentication-plugin=mysql_native_password
     networks:
       - n8n-network
@@ -54,15 +53,24 @@ services:
     ports:
       - "6379:6379"
     volumes:
-      - ./redis-data:/data
+      - ./data/redis-data:/data
     command: ["redis-server", "--appendonly", "yes", "--loglevel", "verbose"]
     networks:
       - n8n-network
 
-volumes:
-  n8n_data:
-  mysql_data:
-  redis_data:
+  mqtt:
+    image: eclipse-mosquitto:2.0
+    container_name: mqtt-broker
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./config/mqtt/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - ./data/mqtt-data:/mosquitto/data
+      - ./data/mqtt-logs:/mosquitto/log
+    networks:
+      - n8n-network
 
 networks:
   n8n-network:

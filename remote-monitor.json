@@ -1,0 +1,426 @@
+{
+  "name": "remote-monitor",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "f6a7db61-c61e-4788-9487-413c6562a80e",
+      "name": "When chat message received",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "position": [
+        352,
+        256
+      ],
+      "webhookId": "3e83c4d5-71cf-42f4-a867-bc754f5a35b5",
+      "typeVersion": 1.3
+    },
+    {
+      "parameters": {
+        "topics": "sensor/temperature",
+        "options": {
+          "jsonParseBody": true
+        }
+      },
+      "id": "afef6dca-a57c-44a9-af58-b61b00ab3b8a",
+      "name": "MQTT Trigger",
+      "type": "n8n-nodes-base.mqttTrigger",
+      "position": [
+        64,
+        -128
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "mqtt": {
+          "id": "wm1sH3ggKtZux3RH",
+          "name": "MQTT account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "qwen3:14b",
+        "options": {}
+      },
+      "id": "3a446380-6964-465c-98c7-b5da67e1a9f5",
+      "name": "qwen3",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "position": [
+        576,
+        288
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "ollamaApi": {
+          "id": "KLoaICSBpFR345xi",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"message\": \"{{$json.message.request}}\",\n  \"sessionId\": \"{{$json.message.sessionId}}\"\n}\n",
+        "options": {}
+      },
+      "id": "d7b46d72-c773-472e-903c-3ce605ddc1b3",
+      "name": "format-mqtt-request",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        352,
+        -128
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "guildId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "1424414389532098698",
+          "cachedResultUrl": "https://discord.com/channels/1424414389532098698",
+          "cachedResultName": "devopsnextgenx"
+        },
+        "channelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "1424414396213497989",
+          "cachedResultUrl": "https://discord.com/channels/1424414389532098698/1424414396213497989",
+          "cachedResultName": "general"
+        },
+        "content": "========\nSource: {{ $json.command }}\nRequest Summary: {{ $json.description }}\nResponse: {{ $json.response }}",
+        "options": {}
+      },
+      "id": "da7a5939-2b92-424f-9c41-4bb907c4fe3a",
+      "name": "temp-conversion-response",
+      "type": "n8n-nodes-base.discord",
+      "position": [
+        1680,
+        320
+      ],
+      "webhookId": "e8c87bda-6b60-46b6-b1ab-01ebcded49e1",
+      "typeVersion": 2,
+      "credentials": {
+        "discordBotApi": {
+          "id": "HUR8gbAPb3sl9hJA",
+          "name": "Discord Bot account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Request: {{ $json.chatInput || $json.message || \"\" }}\nSource: {{  $json.message?.length > 0 ? \"MQTT\": \"Chat\" }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are a task planner.\n\nExtract multiple data request from user request.\nBuild task with linux command and description for tool to execute.\n\nConvert user requests into a JSON array of SSH commands/tasks.\n\nReturn ONLY valid JSON in this format:\n{\n\"source\": \"Chat|mqtt\",\n\"tasks\": [\n  {\"command\": \"ls -la /home\", \"description\": \"List home directory\"},\n  {\"command\": \"df -h\", \"description\": \"Check disk space\"}\n]\n}\n\nDO NOT OUTPUT THINK tag"
+        }
+      },
+      "id": "021f6251-b876-4dd0-bee7-13cf107c7b69",
+      "name": "task-builder",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        576,
+        64
+      ],
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "jsCode": "\nlet tasks = $input.first().json.output.tasks\n\n// Return each task as separate item for looping\nreturn tasks.map(task => ({\n  json: {\n    command: task.command,\n    description: task.description || ''\n  }\n}));"
+      },
+      "id": "ad37d53e-acee-46d5-b4c9-c354717bab30",
+      "name": "run-tasks",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        928,
+        64
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "description": "Call this tool to get hostname of the server\n\nInclude response from this node as remoteResponse in json response",
+        "workflowId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "rGNGLFXeBGFotJ7o",
+          "cachedResultUrl": "/workflow/rGNGLFXeBGFotJ7o",
+          "cachedResultName": "ssh-n8n-workflow"
+        },
+        "workflowInputs": {
+          "value": {
+            "command": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('command', `Command to run to get needed information from remote host`, 'string') }}"
+          },
+          "schema": [
+            {
+              "id": "command",
+              "type": "string",
+              "display": true,
+              "removed": false,
+              "required": false,
+              "displayName": "command",
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            }
+          ],
+          "mappingMode": "defineBelow",
+          "matchingColumns": [
+            "command"
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "id": "a7f9adca-c95d-418d-aaeb-03cf0b16b6e3",
+      "name": "Call 'ssh-n8n-workflow'",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "position": [
+        0,
+        480
+      ],
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "rGNGLFXeBGFotJ7o",
+          "cachedResultUrl": "/workflow/rGNGLFXeBGFotJ7o",
+          "cachedResultName": "ssh-n8n-workflow"
+        },
+        "workflowInputs": {
+          "value": {
+            "command": "={{ $json.command }}"
+          },
+          "schema": [
+            {
+              "id": "command",
+              "type": "string",
+              "display": true,
+              "removed": false,
+              "required": false,
+              "displayName": "command",
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            }
+          ],
+          "mappingMode": "defineBelow",
+          "matchingColumns": [
+            "command"
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {}
+      },
+      "id": "dd315206-fa82-4a3c-a8c9-6c974e191702",
+      "name": "Call 'ssh-n8n-workflow'1",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "position": [
+        1152,
+        64
+      ],
+      "typeVersion": 1.3
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get raw input\nconst commandResponseArray = $input.all();\n\nconst processedData = commandResponseArray.map(item => {\n  // Handle both direct and nested json cases\n  const data = item.json || item;\n  \n  return {\n    output: String(data.stdout || data.stderr || '')\n  };\n});\n\n// Log the processed data for debugging\nconsole.log('Processed Data:', JSON.stringify(processedData, null, 2));\n\nreturn [{\n  response: processedData\n}];"
+      },
+      "id": "e43def83-3449-4ce4-8eb2-bffca697c92a",
+      "name": "aggregate-result",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        1360,
+        64
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"source\": {\n    \"type\": \"string\",\n    \"enum\": [\"Chat\", \"MQTT\"],\n    \"description\": \"The source of the request, e.g., 'Chat' or 'MQTT'\"\n  },\n  \"tasks\": {\n    \"$schema\": \"http://json-schema.org/draft-07/schema#\",\n    \"type\": \"array\",\n    \"items\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"command\": {\n          \"type\": \"string\",\n          \"description\": \"The shell command to execute\"\n        },\n        \"description\": {\n          \"type\": \"string\",\n          \"description\": \"A human-readable description of what the command does\"\n        }\n      },\n      \"required\": [\n        \"command\",\n        \"description\"\n      ],\n      \"additionalProperties\": false\n    },\n    \"minItems\": 1\n  }\n}"
+      },
+      "id": "db56e9e7-59d5-4814-b2a1-195f2626d365",
+      "name": "tasks-schema",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "position": [
+        720,
+        288
+      ],
+      "typeVersion": 1.3
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1264,
+        320
+      ],
+      "id": "ddce8f5a-55a2-4c42-9266-f286d1f32d21",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "jsCode": "let i = 0;\nlet response = undefined;\nconst finalReponse = [];\n\n// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  i++;\n  if (i == 1) {\n    response = item.json;\n    continue;\n  }\n  \n  item.json.response = response.response[i-2].output;\n  finalReponse.push(item.json)\n}\n\nreturn finalReponse;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1472,
+        320
+      ],
+      "id": "8a40333b-eec6-4be8-a381-ce50e7fe4f84",
+      "name": "combine-command-response"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "qwen3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "task-builder",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "run-tasks": {
+      "main": [
+        [
+          {
+            "node": "Call 'ssh-n8n-workflow'1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "MQTT Trigger": {
+      "main": [
+        [
+          {
+            "node": "format-mqtt-request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "task-builder": {
+      "main": [
+        [
+          {
+            "node": "run-tasks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "tasks-schema": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "task-builder",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "aggregate-result": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "format-mqtt-request": {
+      "main": [
+        [
+          {
+            "node": "task-builder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'ssh-n8n-workflow'": {
+      "ai_tool": [
+        []
+      ]
+    },
+    "Call 'ssh-n8n-workflow'1": {
+      "main": [
+        [
+          {
+            "node": "aggregate-result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "task-builder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "combine-command-response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "combine-command-response": {
+      "main": [
+        [
+          {
+            "node": "temp-conversion-response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "9f8fbc4c-3e42-4fce-bfb2-152477009ebb",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "45c417bac78415cc82936bcd15e18b8c6e14faf1263d26de9f0ef5352823a723"
+  },
+  "id": "PeKFg5s37Hd3JGhr",
+  "tags": []
+}

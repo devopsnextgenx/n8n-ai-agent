@@ -1,212 +1,126 @@
-# N8N MCP Server
+# MCP Crypto Server
 
-A Model Context Protocol (MCP) server for n8n AI agent with multiple tools and utilities.
+A Model Context Protocol (MCP) server implementation using FastMCP with HTTP transport, providing cryptographic tools for base64 encoding/decoding.
 
 ## Features
 
-- **Base64 Crypter**: Encode/decode Base64 strings
-- **Modular Architecture**: Well-organized codebase with separate modules
-- **UV Project**: Modern Python project management with UV
-- **Type Safety**: Full type hints and mypy checking
-- **Testing**: Comprehensive test suite with pytest
-- **Development Tools**: Pre-commit hooks, linting, and formatting
+- **Tools**: 
+  - `encrypt`: Encrypt strings to base64
+  - `decrypt`: Decrypt base64 strings
+- **Resources**:
+  - Server version information
+  - Server status
+  - Tools list
+- **Configuration**: YAML-based configuration for server settings and logging
+- **Logging**: Console and file logging with rotation
+
+## Requirements
+
+- Python 3.10 or higher
+- uv package manager
+
+## Installation
+
+This project uses `uv` for dependency management. Install dependencies:
+
+```bash
+uv sync
+```
+
+## Configuration
+
+Copy `config.yaml.example` to `config.yaml` and adjust settings:
+
+```yaml
+server:
+  host: "0.0.0.0"
+  port: 6789
+
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "logs/mcp-server.log"
+```
+
+## Usage
+
+Start the server (multiple options):
+
+**Option 1: FastAPI server (recommended - most reliable)**
+```bash
+uv run python src/fastapi_server.py
+```
+
+**Option 2: Main server with FastMCP**
+```bash
+uv run python -m src.main
+python -m src.main
+```
+
+**Option 3: Simple server (alternative)**
+```bash
+uv run python src/simple_server.py
+python src/simple_server.py
+```
+
+**Option 4: Development mode (tries FastAPI first)**
+```bash
+uv run python dev.py run
+python dev.py run
+```
+
+The server will be available at `http://localhost:6789` (configurable in `config.yaml`)
+
+### API Endpoints
+
+Once running, you can access:
+
+- **Root**: `GET /` - Server information
+- **Health**: `GET /health` - Health check
+- **Documentation**: `GET /docs` - Interactive API docs
+- **Tools**:
+  - `POST /tools/encrypt` - Encrypt text to base64
+  - `POST /tools/decrypt` - Decrypt base64 text
+- **Resources**:
+  - `GET /resources/version` - Server version info
+  - `GET /resources/status` - Server status and metrics
+  - `GET /resources/tools` - Available tools list
 
 ## Project Structure
 
 ```
-mcp-server/
-├── pyproject.toml          # Project configuration and dependencies
-├── README.md               # This file
-├── .gitignore             # Git ignore patterns
-├── .env.example           # Environment variables example
-├── uv.lock                # UV lock file (auto-generated)
-├── n8n_mcp_server/        # Main package
-│   ├── __init__.py        # Package initialization
-│   ├── main.py            # Server entry point
-│   ├── cli.py             # CLI utilities
-│   ├── config.py          # Configuration management
-│   ├── tools/             # MCP tools
-│   │   ├── __init__.py    # Tools package init
-│   │   ├── base64_tool.py # Base64 encoder/decoder
-│   │   └── example_tool.py # Example tool template
-│   ├── handlers/          # Request handlers
-│   │   ├── __init__.py    # Handlers package init
-│   │   └── base_handler.py # Base handler class
-│   └── utils/             # Utility modules
-│       ├── __init__.py    # Utils package init
-│       ├── logging.py     # Logging configuration
-│       └── helpers.py     # Helper functions
-├── tests/                 # Test suite
-│   ├── __init__.py        # Test package init
-│   ├── conftest.py        # Pytest configuration
-│   ├── test_tools/        # Tool tests
-│   │   ├── __init__.py
-│   │   └── test_base64_tool.py
-│   └── test_handlers/     # Handler tests
-│       ├── __init__.py
-│       └── test_base_handler.py
-└── scripts/               # Development scripts
-    ├── dev.py             # Development server
-    ├── lint.py            # Linting script
-    └── test.py            # Testing script
+├── src/
+│   ├── mcp_store/
+│   │   ├── tools/
+│   │   ├── resources/
+│   │   └── prompts/
+│   ├── main.py
+│   ├── config.py
+│   ├── server.py
+│   └── utils.py
+├── logs/
+├── scripts/
+├── config.yaml
+└── pyproject.toml
 ```
 
-## Quick Start with UV
+## Development
 
-### Prerequisites
+Run tests:
 
-Install UV (Python package manager):
-```bash
-# On Windows
-powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
-
-# On macOS/Linux
-curl -LsSf https://astral.sh/uv/install.sh | sh
-```
-
-### Setup
-
-1. **Initialize the project**:
-   ```bash
-   cd mcp-server
-   uv sync
-   ```
-
-2. **Activate the virtual environment**:
-   ```bash
-   # On Windows
-   .venv\Scripts\activate
-
-   # On macOS/Linux
-   source .venv/bin/activate
-   ```
-
-3. **Install development dependencies**:
-   ```bash
-   uv sync --all-extras
-   ```
-
-4. **Copy environment variables**:
-   ```bash
-   cp .env.example .env
-   # Edit .env with your configuration
-   ```
-
-### Development
-
-**Run the MCP server**:
-```bash
-uv run mcp-server
-# or
-uv run python -m n8n_mcp_server.main
-```
-
-**Development mode with auto-reload**:
-```bash
-uv run mcp-dev
-```
-
-**Run tests**:
 ```bash
 uv run pytest
-# or with coverage
-uv run pytest --cov=n8n_mcp_server
 ```
 
-**Linting and formatting**:
+Format code:
+
 ```bash
-# Format code
-uv run black .
-uv run isort .
-
-# Lint code
-uv run flake8 .
-uv run mypy n8n_mcp_server/
-
-# Run all checks
-uv run ruff check .
+uv run black src/
+uv run isort src/
 ```
 
-**Install new dependencies**:
+Lint code:
+
 ```bash
-# Runtime dependency
-uv add package-name
-
-# Development dependency
-uv add --dev package-name
+uv run flake8 src/
 ```
-
-### Usage
-
-The MCP server provides the following tools:
-
-#### Base64 Tool
-- `encrypt(data: str) -> str`: Encode data to Base64
-- `decrypt(encoded: str) -> str | None`: Decode Base64 to string
-
-Example usage:
-```python
-# Encoding
-result = encrypt("Hello, World!")
-print(result)  # SGVsbG8sIFdvcmxkIQ==
-
-# Decoding
-original = decrypt("SGVsbG8sIFdvcmxkIQ==")
-print(original)  # Hello, World!
-```
-
-## Adding New Tools
-
-1. **Create a new tool file** in `n8n_mcp_server/tools/`:
-   ```python
-   # n8n_mcp_server/tools/my_tool.py
-   from fastmcp import FastMCP
-   
-   def register_my_tool(mcp: FastMCP):
-       @mcp.tool()
-       def my_function(param: str) -> str:
-           """Tool description"""
-           return f"Processed: {param}"
-   ```
-
-2. **Register the tool** in `n8n_mcp_server/main.py`:
-   ```python
-   from .tools.my_tool import register_my_tool
-   
-   # In main():
-   register_my_tool(mcp)
-   ```
-
-3. **Add tests** in `tests/test_tools/test_my_tool.py`
-
-## Configuration
-
-Create a `.env` file with your configuration:
-```env
-MCP_SERVER_HOST=127.0.0.1
-MCP_SERVER_PORT=8000
-LOG_LEVEL=INFO
-DEBUG=false
-```
-
-## Contributing
-
-1. **Set up pre-commit hooks**:
-   ```bash
-   uv run pre-commit install
-   ```
-
-2. **Run tests before committing**:
-   ```bash
-   uv run pytest
-   ```
-
-3. **Follow the coding standards**:
-   - Use type hints
-   - Write docstrings
-   - Add tests for new features
-   - Follow PEP 8 (enforced by black/isort)
-
-## License
-
-MIT License - see LICENSE file for details.

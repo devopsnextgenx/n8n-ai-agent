@@ -55,8 +55,8 @@ def _create_result(operation: str, a: Union[int, float], b: Union[int, float],
     return {
         "success": success,
         "operation": operation,
-        "operand_a": a,
-        "operand_b": b,
+        "a": a,
+        "b": b,
         "result": result,
         "error": error
     }

@@ -99,8 +99,8 @@ async def get_tools_list_resource() -> str:
                     "returns": {
                         "success": {"type": "boolean", "description": "Whether operation succeeded"},
                         "operation": {"type": "string", "description": "Operation performed"},
-                        "operand_a": {"type": "number", "description": "First operand"},
-                        "operand_b": {"type": "number", "description": "Second operand"},
+                        "a": {"type": "number", "description": "First operand"},
+                        "b": {"type": "number", "description": "Second operand"},
                         "result": {"type": "number", "description": "Addition result"},
                         "error": {"type": "string", "description": "Error message if failed"}
                     },
@@ -110,8 +110,8 @@ async def get_tools_list_resource() -> str:
                             "output": {
                                 "success": True,
                                 "operation": "add",
-                                "operand_a": 10,
-                                "operand_b": 5,
+                                "a": 10,
+                                "b": 5,
                                 "result": 15,
                                 "error": None
                             }
@@ -128,8 +128,8 @@ async def get_tools_list_resource() -> str:
                     "returns": {
                         "success": {"type": "boolean", "description": "Whether operation succeeded"},
                         "operation": {"type": "string", "description": "Operation performed"},
-                        "operand_a": {"type": "number", "description": "First operand"},
-                        "operand_b": {"type": "number", "description": "Second operand"},
+                        "a": {"type": "number", "description": "First operand"},
+                        "b": {"type": "number", "description": "Second operand"},
                         "result": {"type": "number", "description": "Subtraction result"},
                         "error": {"type": "string", "description": "Error message if failed"}
                     },
@@ -139,8 +139,8 @@ async def get_tools_list_resource() -> str:
                             "output": {
                                 "success": True,
                                 "operation": "subtract",
-                                "operand_a": 10,
-                                "operand_b": 5,
+                                "a": 10,
+                                "b": 5,
                                 "result": 5,
                                 "error": None
                             }
@@ -157,8 +157,8 @@ async def get_tools_list_resource() -> str:
                     "returns": {
                         "success": {"type": "boolean", "description": "Whether operation succeeded"},
                         "operation": {"type": "string", "description": "Operation performed"},
-                        "operand_a": {"type": "number", "description": "First operand"},
-                        "operand_b": {"type": "number", "description": "Second operand"},
+                        "a": {"type": "number", "description": "First operand"},
+                        "b": {"type": "number", "description": "Second operand"},
                         "result": {"type": "number", "description": "Multiplication result"},
                         "error": {"type": "string", "description": "Error message if failed"}
                     },
@@ -168,8 +168,8 @@ async def get_tools_list_resource() -> str:
                             "output": {
                                 "success": True,
                                 "operation": "multiply",
-                                "operand_a": 10,
-                                "operand_b": 5,
+                                "a": 10,
+                                "b": 5,
                                 "result": 50,
                                 "error": None
                             }
@@ -186,8 +186,8 @@ async def get_tools_list_resource() -> str:
                     "returns": {
                         "success": {"type": "boolean", "description": "Whether operation succeeded"},
                         "operation": {"type": "string", "description": "Operation performed"},
-                        "operand_a": {"type": "number", "description": "First operand"},
-                        "operand_b": {"type": "number", "description": "Second operand"},
+                        "a": {"type": "number", "description": "First operand"},
+                        "b": {"type": "number", "description": "Second operand"},
                         "result": {"type": "number", "description": "Division result"},
                         "error": {"type": "string", "description": "Error message if failed"}
                     },
@@ -197,8 +197,8 @@ async def get_tools_list_resource() -> str:
                             "output": {
                                 "success": True,
                                 "operation": "divide",
-                                "operand_a": 10,
-                                "operand_b": 5,
+                                "a": 10,
+                                "b": 5,
                                 "result": 2,
                                 "error": None
                             }
@@ -215,8 +215,8 @@ async def get_tools_list_resource() -> str:
                     "returns": {
                         "success": {"type": "boolean", "description": "Whether operation succeeded"},
                         "operation": {"type": "string", "description": "Operation performed"},
-                        "operand_a": {"type": "number", "description": "First operand"},
-                        "operand_b": {"type": "number", "description": "Second operand"},
+                        "a": {"type": "number", "description": "First operand"},
+                        "b": {"type": "number", "description": "Second operand"},
                         "result": {"type": "number", "description": "Modulo result"},
                         "error": {"type": "string", "description": "Error message if failed"}
                     },
@@ -226,8 +226,8 @@ async def get_tools_list_resource() -> str:
                             "output": {
                                 "success": True,
                                 "operation": "modulo",
-                                "operand_a": 10,
-                                "operand_b": 3,
+                                "a": 10,
+                                "b": 3,
                                 "result": 1,
                                 "error": None
                             }

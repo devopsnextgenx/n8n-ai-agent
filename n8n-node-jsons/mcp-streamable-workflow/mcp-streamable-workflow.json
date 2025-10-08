@@ -1,0 +1,202 @@
+{
+  "name": "mcp-streamable-workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "d4740571-7899-423f-aea6-34ff86209221",
+      "name": "When chat message received",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "position": [
+        -272,
+        -64
+      ],
+      "webhookId": "47910acd-bb74-4636-b1e2-2540d0b170de",
+      "typeVersion": 1.3
+    },
+    {
+      "parameters": {
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are a helpful assistant, who has access to mcp tools to perform user requested actions.\n\nUsing mcp tools and combined LLM to answer user request, \nuse one or multiple tools in needed sequence and respond.\nMake sure parameters are following user given sequence as its important during calculation. ie. make sure a and b is used in same sequence as given"
+        }
+      },
+      "id": "abd725e9-fc28-4e34-8139-76b4ec66a4f2",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        -80,
+        16
+      ],
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "model": "Qwen2.5:latest",
+        "options": {}
+      },
+      "id": "09809e5c-3a83-4ce0-b3f0-55471332dfe8",
+      "name": "Ollama Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "position": [
+        192,
+        272
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "ollamaApi": {
+          "id": "KLoaICSBpFR345xi",
+          "name": "host.docker.internal"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "endpointUrl": "http://host.docker.internal:6789/mcp",
+        "options": {}
+      },
+      "id": "87831057-7107-4ac4-96be-b45a4afec771",
+      "name": "MCP Client",
+      "type": "@n8n/n8n-nodes-langchain.mcpClientTool",
+      "position": [
+        16,
+        272
+      ],
+      "typeVersion": 1.2
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"answer\": {\n      \"type\": \"string\"\n    }\n  },\n  \"required\": [\"answer\"]\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        640,
+        128
+      ],
+      "id": "4e3b5814-d8ef-4609-9827-4e1938bee457",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        288,
+        -112
+      ],
+      "id": "7129c787-dd3e-4650-ae2b-71a0f0d79d8d",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Original Request: {{ $input.first().json.chatInput }}\n\nTool Response: {{ $input.last().json.output }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are a helpful assistant, with help of given Original Request and Tool Response.\n\nPrepare final response from tool below JSON schema exact,\n{\n   \"answer\": \"response from tool\"\n}\n\nDO not include any other text or think tag"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        496,
+        -112
+      ],
+      "id": "fa129518-ed56-46b0-a6e4-6124cb1e3af9",
+      "name": "AI Agent1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "MCP Client": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "AI Agent1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "6793094b-f87b-4fd5-b05e-f9644e409876",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "45c417bac78415cc82936bcd15e18b8c6e14faf1263d26de9f0ef5352823a723"
+  },
+  "id": "wb9UH1wpazf56rYs",
+  "tags": []
+}

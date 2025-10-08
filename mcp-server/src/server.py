@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 from typing import Any, Dict
 from fastmcp import FastMCP
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 # Add src to path for absolute imports
 src_path = Path(__file__).parent
@@ -29,18 +29,78 @@ from mcp_store.resources.tools_list import get_tools_list_resource
 logger = get_logger(__name__)
 
 
-# Pydantic models for MCP tool parameters
+# Pydantic models for MCP tool parameters with comprehensive schemas
 class EncryptParams(BaseModel):
-    text: str
+    """Parameters for the encrypt tool that converts text to base64 encoding."""
+    
+    text: str = Field(
+        ...,
+        description="The plain text string to encode to base64. Can contain any Unicode characters.",
+        min_length=1,
+        max_length=10000,
+        examples=["Hello World", "This is a secret message", "amitkshirsagar"]
+    )
+    
+    class Config:
+        json_schema_extra = {
+            "title": "Encrypt Tool Parameters",
+            "description": "Input parameters for encoding text to base64",
+            "examples": [
+                {"text": "Hello World"},
+                {"text": "This is a secret message"},
+                {"text": "amitkshirsagar"}
+            ]
+        }
 
 
 class DecryptParams(BaseModel):
-    encoded_text: str
+    """Parameters for the decrypt tool that converts base64 back to original text."""
+    
+    encoded_text: str = Field(
+        ...,
+        description="The base64 encoded string to decode back to original text. Must be valid base64 format.",
+        min_length=1,
+        pattern=r'^[A-Za-z0-9+/]*={0,2}$',
+        examples=["SGVsbG8gV29ybGQ=", "VGhpcyBpcyBhIHNlY3JldCBtZXNzYWdl", "YW1pdGtzaGlyc2FnYXI="]
+    )
+    
+    class Config:
+        json_schema_extra = {
+            "title": "Decrypt Tool Parameters", 
+            "description": "Input parameters for decoding base64 to original text",
+            "examples": [
+                {"encoded_text": "SGVsbG8gV29ybGQ="},
+                {"encoded_text": "VGhpcyBpcyBhIHNlY3JldCBtZXNzYWdl"},
+                {"encoded_text": "YW1pdGtzaGlyc2FnYXI="}
+            ]
+        }
 
 
 class CalculatorParams(BaseModel):
-    a: float
-    b: float
+    """Parameters for calculator tools that perform mathematical operations on two numbers."""
+    
+    a: float = Field(
+        ...,
+        description="The first number (operand) for the mathematical operation. Can be integer or decimal.",
+        examples=[5.0, 10, 3.14, -2.5]
+    )
+    
+    b: float = Field(
+        ...,
+        description="The second number (operand) for the mathematical operation. Can be integer or decimal.",
+        examples=[3.0, 2, 1.41, -1.5]
+    )
+    
+    class Config:
+        json_schema_extra = {
+            "title": "Calculator Tool Parameters",
+            "description": "Input parameters for mathematical operations between two numbers",
+            "examples": [
+                {"a": 10, "b": 5},
+                {"a": 3.14, "b": 2},
+                {"a": -2.5, "b": 1.5}
+            ]
+        }
 
 
 class MCPCryptoServer:
@@ -50,18 +110,17 @@ class MCPCryptoServer:
         """Initialize the MCP server."""
         self.config = get_config()
         # Create FastMCP app with proper MCP protocol support
+        # Remove deprecated debug parameter
         self.app = FastMCP(
             name="MCP Crypto Server",
-            version="0.1.0",
-            # Enable debug mode for development
-            debug=True
+            version="0.1.0"
         )
         self._setup_mcp_tools()
         self._setup_mcp_resources()
         logger.info("MCP Crypto Server initialized with FastMCP")
     
     def _setup_mcp_tools(self) -> None:
-        """Set up MCP tools using FastMCP decorators."""
+        """Set up MCP tools using FastMCP decorators with enhanced metadata."""
         logger.info("Setting up MCP tools")
         
         # Custom handler to process crypto parameters
@@ -103,9 +162,35 @@ class MCPCryptoServer:
             else:
                 raise ValueError(f"Parameters must be a string or an object with 'encoded_text' property. Got: {type(raw_params)}")
 
-        @self.app.tool(name="encrypt", description="Encrypt string to base64")
-        async def encrypt(params) -> Dict[str, Any]:
-            """Encrypt tool handler."""
+        # Enhanced Crypto Tools with comprehensive metadata and schemas
+        @self.app.tool(
+            name="encrypt",
+            description="Encode text to base64 format. Accepts either a plain string or an object with 'text' property. Returns success status, encoded result, and length information."
+        )
+        async def encrypt(params: EncryptParams) -> Dict[str, Any]:
+            """
+            Encrypt (encode) a plain text string to base64 format.
+            
+            This tool converts any text string to its base64 encoded representation,
+            which is useful for encoding data that needs to be stored or transmitted
+            in text-only formats.
+            
+            Args:
+                params: Input parameters containing the text to encode.
+                        Can be a string or object with 'text' property.
+            
+            Returns:
+                Dict containing:
+                - success: Boolean indicating if operation succeeded
+                - encrypted_text: The base64 encoded result
+                - original_length: Length of the original text
+                - encoded_length: Length of the encoded text
+                - error: Error message if operation failed
+            
+            Examples:
+                Input: "Hello World"
+                Output: {"success": true, "encrypted_text": "SGVsbG8gV29ybGQ=", ...}
+            """
             try:
                 text = _process_encrypt_params(params)
                 logger.info(f"Encrypt tool called with text length: {len(text)}")
@@ -114,9 +199,33 @@ class MCPCryptoServer:
                 logger.error(f"Error in encrypt tool: {e}")
                 return {"success": False, "error": str(e), "encrypted_text": None}
         
-        @self.app.tool(name="decrypt", description="Decrypt base64 string")
-        async def decrypt(params) -> Dict[str, Any]:
-            """Decrypt tool handler."""
+        @self.app.tool(
+            name="decrypt", 
+            description="Decode base64 string back to original text. Accepts either a plain base64 string or an object with 'encoded_text' property. Returns success status, decoded result, and length information."
+        )
+        async def decrypt(params: DecryptParams) -> Dict[str, Any]:
+            """
+            Decrypt (decode) a base64 encoded string back to its original text.
+            
+            This tool converts base64 encoded strings back to their original text format.
+            It validates the base64 format before attempting to decode.
+            
+            Args:
+                params: Input parameters containing the base64 text to decode.
+                        Can be a string or object with 'encoded_text' property.
+            
+            Returns:
+                Dict containing:
+                - success: Boolean indicating if operation succeeded
+                - decrypted_text: The decoded original text
+                - encoded_length: Length of the base64 input
+                - decoded_length: Length of the decoded text
+                - error: Error message if operation failed
+            
+            Examples:
+                Input: "SGVsbG8gV29ybGQ="
+                Output: {"success": true, "decrypted_text": "Hello World", ...}
+            """
             try:
                 encoded_text = _process_decrypt_params(params)
                 logger.info(f"Decrypt tool called with encoded text length: {len(encoded_text)}")
@@ -146,9 +255,35 @@ class MCPCryptoServer:
             else:
                 raise ValueError(f"Parameters must be an array of 2 numbers or an object with 'a' and 'b' properties. Got: {type(raw_params)}")
         
-        @self.app.tool(name="add", description="Add two numbers")
-        async def add(params):
-            """Add tool handler."""
+        # Enhanced Calculator Tools with comprehensive metadata and schemas
+        @self.app.tool(
+            name="add",
+            description="Add two numbers together. Accepts object {a: number, b: number}. Returns operation details and sum result."
+        )
+        async def add(params: CalculatorParams):
+            """
+            Add two numbers and return the sum.
+            
+            This tool performs basic addition of two numeric values.
+            It supports both integers and floating-point numbers.
+            
+            Args:
+                params: Input parameters containing two numbers to add.
+                        Can be object {"a": value, "b": value}.
+            
+            Returns:
+                Dict containing:
+                - success: Boolean indicating if operation succeeded
+                - operation: "add"
+                - operand_a: First number
+                - operand_b: Second number
+                - result: Sum of the two numbers
+                - error: Error message if operation failed
+            
+            Examples:
+                Input: {"a": 5, "b": 3}
+                Output: {"success": true, "operation": "add", "result": 8, ...}
+            """
             try:
                 a, b = _process_calculator_params(params)
                 logger.info(f"Add tool called: {a} + {b}")
@@ -157,9 +292,34 @@ class MCPCryptoServer:
                 logger.error(f"Error in add tool: {e}")
                 return {"success": False, "error": str(e), "result": None}
         
-        @self.app.tool(name="subtract", description="Subtract second number from first")
-        async def subtract(params):
-            """Subtract tool handler."""
+        @self.app.tool(
+            name="subtract",
+            description="Subtract second number from first number. Accepts object {a: minuend, b: subtrahend}. Returns operation details and difference result."
+        )
+        async def subtract(params: CalculatorParams):
+            """
+            Subtract the second number from the first number.
+            
+            This tool performs basic subtraction (a - b) of two numeric values.
+            It supports both integers and floating-point numbers.
+            
+            Args:
+                params: Input parameters containing two numbers for subtraction.
+                        Can be object {"a": minuend, "b": subtrahend}.
+            
+            Returns:
+                Dict containing:
+                - success: Boolean indicating if operation succeeded
+                - operation: "subtract"
+                - operand_a: First number (minuend)
+                - operand_b: Second number (subtrahend)
+                - result: Difference (a - b)
+                - error: Error message if operation failed
+            
+            Examples:
+                Input: {"a": 10, "b": 3}
+                Output: {"success": true, "operation": "subtract", "result": 7, ...}
+            """
             try:
                 a, b = _process_calculator_params(params)
                 logger.info(f"Subtract tool called: {a} - {b}")
@@ -168,9 +328,34 @@ class MCPCryptoServer:
                 logger.error(f"Error in subtract tool: {e}")
                 return {"success": False, "error": str(e), "result": None}
         
-        @self.app.tool(name="multiply", description="Multiply two numbers")
-        async def multiply(params):
-            """Multiply tool handler."""
+        @self.app.tool(
+            name="multiply",
+            description="Multiply two numbers together. Accepts object {a: number, b: number}. Returns operation details and product result."
+        )
+        async def multiply(params: CalculatorParams):
+            """
+            Multiply two numbers and return the product.
+            
+            This tool performs basic multiplication of two numeric values.
+            It supports both integers and floating-point numbers.
+            
+            Args:
+                params: Input parameters containing two numbers to multiply.
+                        Can be object {"a": value, "b": value}.
+            
+            Returns:
+                Dict containing:
+                - success: Boolean indicating if operation succeeded
+                - operation: "multiply"
+                - operand_a: First number
+                - operand_b: Second number
+                - result: Product of the two numbers
+                - error: Error message if operation failed
+            
+            Examples:
+                Input: {"a": 4, "b": 5}
+                Output: {"success": true, "operation": "multiply", "result": 20, ...}
+            """
             try:
                 a, b = _process_calculator_params(params)
                 logger.info(f"Multiply tool called: {a} * {b}")
@@ -179,9 +364,34 @@ class MCPCryptoServer:
                 logger.error(f"Error in multiply tool: {e}")
                 return {"success": False, "error": str(e), "result": None}
         
-        @self.app.tool(name="divide", description="Divide first number by second")
-        async def divide(params):
-            """Divide tool handler."""
+        @self.app.tool(
+            name="divide",
+            description="Divide first number by second number. Accepts object {a: dividend, b: divisor}. Includes division by zero protection. Returns operation details and quotient result."
+        )
+        async def divide(params: CalculatorParams):
+            """
+            Divide the first number by the second number.
+            
+            This tool performs basic division (a / b) of two numeric values.
+            It includes protection against division by zero.
+            
+            Args:
+                params: Input parameters containing two numbers for division.
+                        Can be object {"a": dividend, "b": divisor}.
+            
+            Returns:
+                Dict containing:
+                - success: Boolean indicating if operation succeeded
+                - operation: "divide"
+                - operand_a: First number (dividend)
+                - operand_b: Second number (divisor)
+                - result: Quotient (a / b)
+                - error: Error message if operation failed (e.g., division by zero)
+            
+            Examples:
+                Input: {"a": 15, "b": 3}
+                Output: {"success": true, "operation": "divide", "result": 5, ...}
+            """
             try:
                 a, b = _process_calculator_params(params)
                 logger.info(f"Divide tool called: {a} / {b}")
@@ -190,9 +400,34 @@ class MCPCryptoServer:
                 logger.error(f"Error in divide tool: {e}")
                 return {"success": False, "error": str(e), "result": None}
         
-        @self.app.tool(name="modulo", description="Calculate remainder of first number divided by second")
-        async def modulo(params):
-            """Modulo tool handler."""
+        @self.app.tool(
+            name="modulo",
+            description="Calculate remainder of first number divided by second number. Accepts object {a: dividend, b: divisor}. Includes modulo by zero protection. Returns operation details and remainder result."
+        )
+        async def modulo(params: CalculatorParams):
+            """
+            Calculate the modulo (remainder) of dividing the first number by the second.
+            
+            This tool performs modulo operation (a % b) which returns the remainder
+            after dividing the first number by the second number.
+            
+            Args:
+                params: Input parameters containing two numbers for modulo operation.
+                        Can be object {"a": dividend, "b": divisor}.
+            
+            Returns:
+                Dict containing:
+                - success: Boolean indicating if operation succeeded
+                - operation: "modulo"
+                - operand_a: First number (dividend)
+                - operand_b: Second number (divisor)
+                - result: Remainder (a % b)
+                - error: Error message if operation failed (e.g., modulo by zero)
+            
+            Examples:
+                Input: {"a": 17, "b": 5}
+                Output: {"success": true, "operation": "modulo", "result": 2, ...}
+            """
             try:
                 a, b = _process_calculator_params(params)
                 logger.info(f"Modulo tool called: {a} % {b}")
@@ -207,39 +442,122 @@ class MCPCryptoServer:
         self._add_test_routes()
     
     def _setup_mcp_resources(self) -> None:
-        """Set up MCP resources using FastMCP decorators."""
+        """Set up MCP resources using FastMCP decorators with enhanced metadata."""
         logger.info("Setting up MCP resources")
         
         @self.app.resource(
             "resource://mcp/version",
             name="version",
-            description="Current MCP server version",
+            description="Current MCP server version information including build details and compatibility",
             mime_type="application/json"
         )
         async def version_resource() -> str:
-            """Version resource handler."""
+            """
+            Get current MCP server version and build information.
+            
+            This resource provides detailed version information about the MCP server,
+            including version number, build timestamp, and compatibility information.
+            
+            Returns:
+                JSON string containing:
+                - version: Semantic version string (e.g., "0.1.0")
+                - build_time: ISO timestamp of when the server was built
+                - mcp_version: MCP protocol version supported
+                - fastmcp_version: FastMCP library version used
+                - python_version: Python runtime version
+                
+            Examples:
+                {
+                    "version": "0.1.0",
+                    "build_time": "2025-01-07T12:00:00Z",
+                    "mcp_version": "2024-11-05",
+                    "fastmcp_version": "2.3.2",
+                    "python_version": "3.12.0"
+                }
+            """
             logger.info("Version resource requested")
             return await get_version_resource()
         
         @self.app.resource(
             "resource://mcp/status",
             name="status",
-            description="Current MCP server status",
+            description="Current MCP server operational status and health information",
             mime_type="application/json"
         )
         async def status_resource() -> str:
-            """Status resource handler."""
+            """
+            Get current MCP server operational status and health metrics.
+            
+            This resource provides real-time information about the server's health,
+            uptime, and operational metrics for monitoring and diagnostics.
+            
+            Returns:
+                JSON string containing:
+                - status: Overall health status ("healthy", "degraded", "unhealthy")
+                - uptime: Server uptime in seconds since startup
+                - start_time: ISO timestamp when server started
+                - tools_count: Number of registered tools
+                - resources_count: Number of registered resources
+                - memory_usage: Current memory usage statistics
+                - request_count: Total number of requests processed
+                
+            Examples:
+                {
+                    "status": "healthy",
+                    "uptime": 3600,
+                    "start_time": "2025-01-07T12:00:00Z",
+                    "tools_count": 7,
+                    "resources_count": 3,
+                    "memory_usage": {"rss": 45000000, "heap_used": 12000000},
+                    "request_count": 127
+                }
+            """
             logger.info("Status resource requested")
             return await get_status_resource()
         
         @self.app.resource(
             "resource://mcp/tools/list",
             name="tools_list",
-            description="List MCP server tools",
+            description="Comprehensive list of all available MCP tools with detailed metadata",
             mime_type="application/json"
         )
         async def tools_list_resource() -> str:
-            """Tools list resource handler."""
+            """
+            Get comprehensive list of all available MCP tools with their metadata.
+            
+            This resource provides a complete catalog of all tools registered with
+            the MCP server, including their schemas, descriptions, and usage examples.
+            
+            Returns:
+                JSON string containing:
+                - tools: Array of tool objects with detailed metadata
+                - count: Total number of available tools
+                - categories: Tools grouped by category (crypto, calculator, etc.)
+                
+            Each tool object includes:
+                - name: Tool identifier for calling
+                - description: Human-readable description of functionality
+                - schema: JSON schema for input parameters
+                - examples: Example usage scenarios
+                - category: Tool category (crypto, math, utility, etc.)
+                - return_schema: Expected output format
+                
+            Examples:
+                {
+                    "tools": [
+                        {
+                            "name": "encrypt",
+                            "description": "Encode text to base64 format",
+                            "category": "crypto",
+                            "schema": {...},
+                            "examples": [{"text": "Hello"}],
+                            "return_schema": {...}
+                        }
+                    ],
+                    "count": 7,
+                    "categories": ["crypto", "calculator"]
+                }
+            """
             logger.info("Tools list resource requested")
             return await get_tools_list_resource()
         
@@ -378,18 +696,53 @@ class MCPCryptoServer:
         
         @self.app.custom_route("/test/tools", methods=["GET"])
         async def tools_list_endpoint(request):
-            """List all registered MCP tools."""
+            """List all registered MCP tools with enhanced metadata."""
             try:
                 tools = await self.app.get_tools() if asyncio.iscoroutinefunction(self.app.get_tools) else self.app.get_tools()
+                
+                # Enhanced tool information with schemas
+                enhanced_tools = []
+                for tool in (tools or []):
+                    tool_info = {
+                        "name": getattr(tool, 'name', str(tool)),
+                        "description": getattr(tool, 'description', ''),
+                        "input_schema": getattr(tool, 'input_schema', None)
+                    }
+                    
+                    # Add Pydantic schema information if available
+                    tool_name = tool_info["name"]
+                    if tool_name in ["encrypt"]:
+                        tool_info["pydantic_schema"] = EncryptParams.model_json_schema()
+                        tool_info["examples"] = [
+                            {"text": "Hello World"},
+                            {"text": "This is a secret message"}
+                        ]
+                    elif tool_name in ["decrypt"]:
+                        tool_info["pydantic_schema"] = DecryptParams.model_json_schema()
+                        tool_info["examples"] = [
+                            {"encoded_text": "SGVsbG8gV29ybGQ="},
+                            {"encoded_text": "VGhpcyBpcyBhIHNlY3JldCBtZXNzYWdl"}
+                        ]
+                    elif tool_name in ["add", "subtract", "multiply", "divide", "modulo"]:
+                        tool_info["pydantic_schema"] = CalculatorParams.model_json_schema()
+                        tool_info["examples"] = [
+                            {"a": 10, "b": 5},
+                            {"a": 3.14, "b": 2.0}
+                        ]
+                    
+                    enhanced_tools.append(tool_info)
+                
                 return {
-                    "tools": [
-                        {
-                            "name": getattr(tool, 'name', str(tool)),
-                            "description": getattr(tool, 'description', ''),
-                            "schema": getattr(tool, 'input_schema', None)
-                        } for tool in (tools or [])
-                    ],
-                    "count": len(tools) if tools else 0
+                    "tools": enhanced_tools,
+                    "count": len(enhanced_tools),
+                    "metadata": {
+                        "crypto_tools": ["encrypt", "decrypt"],
+                        "calculator_tools": ["add", "subtract", "multiply", "divide", "modulo"],
+                        "parameter_formats": {
+                            "crypto": "String or {text: string} / {encoded_text: string}",
+                            "calculator": "{a: number, b: number}"
+                        }
+                    }
                 }
             except Exception as e:
                 logger.error(f"Error getting tools: {e}")

@@ -1,0 +1,215 @@
+{
+  "name": "crypto-executor-workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "be3fd1eb-3b28-4ea3-bb91-ecad506d5438",
+      "name": "When chat message received",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "position": [
+        80,
+        304
+      ],
+      "webhookId": "5b8bdb78-a7fc-4121-8308-ce2aa7ad31c1",
+      "typeVersion": 1.3
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "response",
+              "name": "response",
+              "type": "string",
+              "value": "={{ $json.output.response }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5e4734d3-8701-442b-9017-012a8d4a477e",
+      "name": "Default Response",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        848,
+        304
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are a helpful assistant that processes user requests using available tools.\n\nWhen using tools, execute them properly and return the results to the user.\n\nIMPORTANT: You MUST respond with ONLY a valid JSON object in exactly this format:\n{\n  \"response\": \"your response message here\"\n}\n\nDo not output any extra text or <think> tags in output"
+        }
+      },
+      "id": "78935a57-0af2-436b-b5a8-414548881b39",
+      "name": "mcp-agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        432,
+        304
+      ],
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n\t\"type\": \"object\",\n\t\"properties\": {\n\t\t\"response\": {\n\t\t\t\"type\": \"string\"\n\t\t}\n\t},\n\t\"required\": [\"response\"]\n}"
+      },
+      "id": "bf34a419-5fa8-42cd-a895-c25c329da506",
+      "name": "tool-response",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "position": [
+        704,
+        576
+      ],
+      "typeVersion": 1.3
+    },
+    {
+      "parameters": {
+        "description": "Encrypts text using the MCP server base64 encryption. Use this when the user asks to encrypt something, especially 'zbox'.",
+        "workflowId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "dv5U3iFzjEA3JgjG",
+          "cachedResultUrl": "/workflow/dv5U3iFzjEA3JgjG",
+          "cachedResultName": "encrypt-decrypt-service-trigger"
+        },
+        "workflowInputs": {
+          "value": {
+            "text": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('text', `Text to encrypt or decrypt`, 'string') }}",
+            "action": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('action', `action from tool expected: can be encrypt or decrypt`, 'string') }}"
+          },
+          "schema": [
+            {
+              "id": "text",
+              "type": "string",
+              "display": true,
+              "removed": false,
+              "required": false,
+              "displayName": "text",
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "action",
+              "type": "string",
+              "display": true,
+              "removed": false,
+              "required": false,
+              "displayName": "action",
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            }
+          ],
+          "mappingMode": "defineBelow",
+          "matchingColumns": [
+            "chatInput"
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        }
+      },
+      "id": "560ee1c2-939b-44fc-9e2c-4e224a027da2",
+      "name": "encrypt-decrypt-server-trigger",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "position": [
+        528,
+        576
+      ],
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "model": "Qwen2.5:latest",
+        "options": {}
+      },
+      "id": "49fa3f86-ccfa-4719-bb06-5b7975f9c002",
+      "name": "qwen2.5",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "position": [
+        304,
+        496
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "ollamaApi": {
+          "id": "KLoaICSBpFR345xi",
+          "name": "host.docker.internal"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "qwen2.5": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "mcp-agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "mcp-agent": {
+      "main": [
+        [
+          {
+            "node": "Default Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "tool-response": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "mcp-agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "mcp-agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "encrypt-decrypt-server-trigger": {
+      "ai_tool": [
+        [
+          {
+            "node": "mcp-agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "e79b1625-2174-43fa-ba0e-4257bd7ae346",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "45c417bac78415cc82936bcd15e18b8c6e14faf1263d26de9f0ef5352823a723"
+  },
+  "id": "oBPGHsRcHLzJcJei",
+  "tags": []
+}

@@ -1,0 +1,124 @@
+{
+  "name": "list-tool-service-trigger",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "233ffcb2-6047-49d3-9f6f-e4f126d079b9",
+      "name": "Start",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "position": [
+        32,
+        224
+      ],
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:6789/resources/tools",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "62640c69-4940-41ec-950b-c3da8b4a17e5",
+      "name": "list-tools",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        256,
+        224
+      ],
+      "typeVersion": 4.1
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Add a new field called 'myNewField' to the JSON of the item\nconst tools = $input.item.json.tools;\n\nconst toolNames = [];\n\nfor (const tool of tools) {\n  toolNames.push({\n    \"name\":tool.name,\n    \"parameters\": tool.parameters,\n    \"description\": tool.description\n  })\n}\n\nreturn {\n  \"tools\": toolNames\n};"
+      },
+      "id": "4d2f46cc-994b-4855-bf80-321dd2585612",
+      "name": "Code in JavaScript",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        464,
+        224
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3f696143-e3e3-4bf2-ae1d-af1647fe85d8",
+              "name": "response",
+              "type": "array",
+              "value": "={{ $json.toolNames }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "45a5905f-b4b9-4eb0-82a5-60a0773602c8",
+      "name": "format-response",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        688,
+        224
+      ],
+      "typeVersion": 3.4
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "list-tools",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "list-tools": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "format-response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "d19352d7-d50c-4cb3-8d81-efe5b7a188de",
+  "meta": {
+    "instanceId": "45c417bac78415cc82936bcd15e18b8c6e14faf1263d26de9f0ef5352823a723"
+  },
+  "id": "aVdyMV0AxIk92VwD",
+  "tags": []
+}

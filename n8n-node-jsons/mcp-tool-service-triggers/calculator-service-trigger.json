@@ -1,0 +1,459 @@
+{
+  "name": "calculator-service-trigger",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "a",
+              "type": "number"
+            },
+            {
+              "name": "b",
+              "type": "number"
+            },
+            {
+              "name": "operation"
+            }
+          ]
+        }
+      },
+      "id": "9699cac9-9eba-44aa-8143-e80801fb8aaf",
+      "name": "Start",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "position": [
+        32,
+        224
+      ],
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "version": 2,
+                  "leftValue": "",
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "id": "77736fd5-ff50-4359-9951-3c0d1eb794ae",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "leftValue": "={{ $json.operation }}",
+                    "rightValue": "add"
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "add"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "version": 2,
+                  "leftValue": "",
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "id": "b136e653-3776-4412-a091-42559033e6df",
+                    "operator": {
+                      "name": "filter.operator.equals",
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "leftValue": "={{ $json.operation }}",
+                    "rightValue": "sub"
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "sub"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "version": 2,
+                  "leftValue": "",
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "id": "a52202aa-ac73-4074-8c6d-e3ec70973e4f",
+                    "operator": {
+                      "name": "filter.operator.equals",
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "leftValue": "={{ $json.operation }}",
+                    "rightValue": "mul"
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "mul"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "version": 2,
+                  "leftValue": "",
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "id": "18849c03-c1e4-4df7-90d6-9e07ae4f5125",
+                    "operator": {
+                      "name": "filter.operator.equals",
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "leftValue": "={{ $json.operation }}",
+                    "rightValue": "div"
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "div"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "version": 2,
+                  "leftValue": "",
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "id": "eedea9f0-e2fe-4e83-862c-dbc529bde126",
+                    "operator": {
+                      "name": "filter.operator.equals",
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "leftValue": "={{ $json.operation }}",
+                    "rightValue": "mod"
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "mod"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fca40079-4d16-4c0c-92bb-ce91b13f44dd",
+      "name": "Switch",
+      "type": "n8n-nodes-base.switch",
+      "position": [
+        288,
+        176
+      ],
+      "typeVersion": 3.3
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3f696143-e3e3-4bf2-ae1d-af1647fe85d8",
+              "name": "response",
+              "type": "string",
+              "value": "={{ $json.result }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4b7a7d54-2d97-4c08-8d64-96c0f886273c",
+      "name": "format-response",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        1008,
+        320
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:6789/tools/subtract",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"a\": \"{{ $json.a }}\",\n  \"b\": \"{{ $json.b }}\"\n}",
+        "options": {}
+      },
+      "id": "655c6e0e-68c8-452f-869a-47389a133468",
+      "name": "sub",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        688,
+        176
+      ],
+      "typeVersion": 4.1
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:6789/tools/add",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"a\": \"{{ $json.a }}\",\n  \"b\": \"{{ $json.b }}\"\n}",
+        "options": {}
+      },
+      "id": "94a7d08c-8039-4732-952c-9854e31120b5",
+      "name": "add",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        688,
+        16
+      ],
+      "typeVersion": 4.1
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:6789/tools/multiply",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"a\": \"{{ $json.a }}\",\n  \"b\": \"{{ $json.b }}\"\n}",
+        "options": {}
+      },
+      "id": "6a60bacb-8bee-4695-9ac5-96e409d00cbd",
+      "name": "mul",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        688,
+        336
+      ],
+      "typeVersion": 4.1
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:6789/tools/divide",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"a\": \"{{ $json.a }}\",\n  \"b\": \"{{ $json.b }}\"\n}",
+        "options": {}
+      },
+      "id": "843bd1d7-062c-477d-b29c-b130b6837638",
+      "name": "div",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        688,
+        480
+      ],
+      "typeVersion": 4.1
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:6789/tools/modulo",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"a\": \"{{ $json.a }}\",\n  \"b\": \"{{ $json.b }}\"\n}",
+        "options": {}
+      },
+      "id": "3e3549cc-154d-430e-a101-4169e932f6b6",
+      "name": "mod",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        688,
+        624
+      ],
+      "typeVersion": 4.1
+    }
+  ],
+  "pinData": {
+    "Start": [
+      {
+        "json": {
+          "a": "7.3",
+          "b": "2.5",
+          "operation": "add"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "add": {
+      "main": [
+        [
+          {
+            "node": "format-response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "div": {
+      "main": [
+        [
+          {
+            "node": "format-response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "mod": {
+      "main": [
+        [
+          {
+            "node": "format-response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "mul": {
+      "main": [
+        [
+          {
+            "node": "format-response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "sub": {
+      "main": [
+        [
+          {
+            "node": "format-response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "add",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "sub",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "mul",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "div",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "mod",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "2fd6c837-765f-4817-aa5a-301c2a7c8dde",
+  "meta": {
+    "instanceId": "45c417bac78415cc82936bcd15e18b8c6e14faf1263d26de9f0ef5352823a723"
+  },
+  "id": "f44kCEyaOxgTnLiu",
+  "tags": []
+}

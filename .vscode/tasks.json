@@ -1,0 +1,188 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Setup Python Environment",
+            "type": "shell",
+            "command": "${workspaceFolder}/setup-python-env.bat",
+            "windows": {
+                "command": "${workspaceFolder}/setup-python-env.bat"
+            },
+            "linux": {
+                "command": "bash",
+                "args": [
+                    "${workspaceFolder}/setup-python-env.sh"
+                ]
+            },
+            "osx": {
+                "command": "bash",
+                "args": [
+                    "${workspaceFolder}/setup-python-env.sh"
+                ]
+            },
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Install Python Dependencies",
+            "type": "shell",
+            "command": "${workspaceFolder}/mcp-server/.venv/Scripts/python.exe",
+            "args": [
+                "-m",
+                "pip",
+                "install",
+                "-r",
+                "requirements.txt"
+            ],
+            "windows": {
+                "command": "${workspaceFolder}/mcp-server/.venv/Scripts/python.exe"
+            },
+            "linux": {
+                "command": "${workspaceFolder}/mcp-server/.venv/bin/python"
+            },
+            "osx": {
+                "command": "${workspaceFolder}/mcp-server/.venv/bin/python"
+            },
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Run MCP Server",
+            "type": "shell",
+            "command": "${workspaceFolder}/mcp-server/.venv/Scripts/python.exe",
+            "args": [
+                "-m",
+                "n8n_mcp_server.cli"
+            ],
+            "windows": {
+                "command": "${workspaceFolder}/mcp-server/.venv/Scripts/python.exe"
+            },
+            "linux": {
+                "command": "${workspaceFolder}/mcp-server/.venv/bin/python"
+            },
+            "osx": {
+                "command": "${workspaceFolder}/mcp-server/.venv/bin/python"
+            },
+            "options": {
+                "cwd": "${workspaceFolder}/mcp-server",
+                "env": {
+                    "PYTHONPATH": "${workspaceFolder}/mcp-server",
+                    "MCP_SERVER_PORT": "8080"
+                }
+            },
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "new"
+            },
+            "problemMatcher": [],
+            "isBackground": true
+        },
+        {
+            "label": "Run Tests",
+            "type": "shell",
+            "command": "${workspaceFolder}/mcp-server/.venv/Scripts/python.exe",
+            "args": [
+                "-m",
+                "pytest",
+                "tests/",
+                "mcp-server/tests/",
+                "-v"
+            ],
+            "windows": {
+                "command": "${workspaceFolder}/mcp-server/.venv/Scripts/python.exe"
+            },
+            "linux": {
+                "command": "${workspaceFolder}/mcp-server/.venv/bin/python"
+            },
+            "osx": {
+                "command": "${workspaceFolder}/mcp-server/.venv/bin/python"
+            },
+            "options": {
+                "cwd": "${workspaceFolder}",
+                "env": {
+                    "PYTHONPATH": "${workspaceFolder}/mcp-server"
+                }
+            },
+            "group": "test",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Format Code (Black)",
+            "type": "shell",
+            "command": "${workspaceFolder}/mcp-server/.venv/Scripts/python.exe",
+            "args": [
+                "-m",
+                "black",
+                "mcp-server/",
+                "--line-length",
+                "88"
+            ],
+            "windows": {
+                "command": "${workspaceFolder}/mcp-server/.venv/Scripts/python.exe"
+            },
+            "linux": {
+                "command": "${workspaceFolder}/mcp-server/.venv/bin/python"
+            },
+            "osx": {
+                "command": "${workspaceFolder}/mcp-server/.venv/bin/python"
+            },
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "silent",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Lint Code (Ruff)",
+            "type": "shell",
+            "command": "${workspaceFolder}/mcp-server/.venv/Scripts/python.exe",
+            "args": [
+                "-m",
+                "ruff",
+                "check",
+                "mcp-server/"
+            ],
+            "windows": {
+                "command": "${workspaceFolder}/mcp-server/.venv/Scripts/python.exe"
+            },
+            "linux": {
+                "command": "${workspaceFolder}/mcp-server/.venv/bin/python"
+            },
+            "osx": {
+                "command": "${workspaceFolder}/mcp-server/.venv/bin/python"
+            },
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        }
+    ]
+}

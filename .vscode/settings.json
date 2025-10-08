@@ -1,0 +1,64 @@
+{
+    // Python interpreter configuration
+    "python.defaultInterpreterPath": "${workspaceFolder}/mcp-server/.venv/Scripts/python.exe",
+    "python.pythonPath": "${workspaceFolder}/mcp-server/.venv/Scripts/python.exe",
+    // Python environment discovery
+    "python.venvPath": "${workspaceFolder}/mcp-server/.venv",
+    "python.envFile": "${workspaceFolder}/mcp-server/.env",
+    // Terminal configuration to activate venv automatically
+    "python.terminal.activateEnvironment": true,
+    "python.terminal.activateEnvInCurrentTerminal": true,
+    // Linting and formatting
+    "python.linting.enabled": true,
+    "python.linting.flake8Enabled": true,
+    "python.linting.mypyEnabled": true,
+    "python.formatting.provider": "black",
+    "python.formatting.blackArgs": [
+        "--line-length",
+        "88"
+    ],
+    // Code analysis
+    "python.analysis.typeCheckingMode": "basic",
+    "python.analysis.autoImportCompletions": true,
+    "python.analysis.autoSearchPaths": true,
+    "python.analysis.extraPaths": [
+        "${workspaceFolder}/mcp-server"
+    ],
+    // Testing configuration
+    "python.testing.pytestEnabled": true,
+    "python.testing.pytestArgs": [
+        "${workspaceFolder}/tests",
+        "${workspaceFolder}/mcp-server/tests"
+    ],
+    "python.testing.unittestEnabled": false,
+    "python.testing.cwd": "${workspaceFolder}",
+    // File associations
+    "files.associations": {
+        "*.py": "python",
+        "requirements*.txt": "pip-requirements",
+        "pyproject.toml": "toml"
+    },
+    // Auto-save and formatting on save
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+        "source.organizeImports": "explicit"
+    },
+    // Exclude patterns
+    "files.exclude": {
+        "**/__pycache__": true,
+        "**/*.pyc": true,
+        "**/node_modules": true,
+        "**/.pytest_cache": true,
+        "**/.mypy_cache": true,
+        "**/data/mysql-data/**": true,
+        "**/logs/**": true
+    },
+    // Search exclude patterns
+    "search.exclude": {
+        "**/__pycache__": true,
+        "**/*.pyc": true,
+        "**/data/**": true,
+        "**/logs/**": true,
+        "**/.venv/**": true
+    }
+}

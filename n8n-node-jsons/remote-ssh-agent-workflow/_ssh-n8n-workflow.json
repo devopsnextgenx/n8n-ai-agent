@@ -1,0 +1,69 @@
+{
+  "name": "_ssh-n8n-workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "jsonExample",
+        "jsonExample": "{\n  \"command\": \"ps -efa|grep plex\"\n}"
+      },
+      "id": "4e4f4b91-4ce1-44a2-88a9-b7ae0aef998b",
+      "name": "Start",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "position": [
+        -288,
+        0
+      ],
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "command": "={{ $json.command }}"
+      },
+      "id": "211b2c3a-397c-45d9-9398-8a86848d4ab2",
+      "name": "ssh-executor",
+      "type": "n8n-nodes-base.ssh",
+      "position": [
+        48,
+        0
+      ],
+      "typeVersion": 1,
+      "alwaysOutputData": false,
+      "credentials": {
+        "sshPassword": {
+          "id": "ctSxOikCNZB6Ur6a",
+          "name": "SSH Password account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "ssh-executor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ssh-executor": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "db6041a4-5794-4dd5-93af-20520dbe64b1",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "45c417bac78415cc82936bcd15e18b8c6e14faf1263d26de9f0ef5352823a723"
+  },
+  "id": "rGNGLFXeBGFotJ7o",
+  "tags": []
+}

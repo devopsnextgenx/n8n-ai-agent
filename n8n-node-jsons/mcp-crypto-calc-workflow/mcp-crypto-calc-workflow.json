@@ -1,0 +1,350 @@
+{
+  "name": "mcp-crypto-calc-workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {
+          "responseMode": "responseNodes"
+        }
+      },
+      "id": "19feb2e2-77f1-4bd5-bdf1-df47e9e07413",
+      "name": "When chat message received",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "position": [
+        -1104,
+        -16
+      ],
+      "webhookId": "627d8b24-5d4b-4c9b-957c-dabae0080bbb",
+      "typeVersion": 1.3,
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are a helpful assistant, Use tools to serve user request,\n\nPrepare final response from tool below JSON schema exact,\n{\n   \"response\": \"response from tool\"\n}\n\nDO not include any other text or think tag"
+        }
+      },
+      "id": "b50ed977-28a3-49fc-9297-44eee9722dc8",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        -880,
+        -16
+      ],
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "description": "Call mcp tool endpoints with text/action to get desired action from mcp server",
+        "workflowId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "dv5U3iFzjEA3JgjG",
+          "cachedResultUrl": "/workflow/dv5U3iFzjEA3JgjG",
+          "cachedResultName": "encrypt-decrypt-service-trigger"
+        },
+        "workflowInputs": {
+          "value": {
+            "text": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('text', ``, 'string') }}",
+            "action": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('action', ``, 'string') }}"
+          },
+          "schema": [
+            {
+              "id": "text",
+              "type": "string",
+              "display": true,
+              "removed": false,
+              "required": false,
+              "displayName": "text",
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "action",
+              "type": "string",
+              "display": true,
+              "removed": false,
+              "required": false,
+              "displayName": "action",
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            }
+          ],
+          "mappingMode": "defineBelow",
+          "matchingColumns": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "id": "b41f1f48-5d8a-42da-93ec-84075cc89907",
+      "name": "Call 'encrypt-decryptservice-trigger'",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "position": [
+        48,
+        256
+      ],
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"$schema\": \"http://json-schema.org/draft-07/schema#\",\n  \"properties\": {\n    \"response\": {\n      \"type\": \"string\"\n    }\n  },\n  \"required\": [\"response\"],\n  \"additionalProperties\": false\n}"
+      },
+      "id": "e40d662a-7191-4f5e-a4ab-e82f3d426eba",
+      "name": "response-parser",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "position": [
+        -560,
+        256
+      ],
+      "typeVersion": 1.3
+    },
+    {
+      "parameters": {
+        "message": "=Response: {{ $json.output.response }}",
+        "waitUserReply": false,
+        "options": {}
+      },
+      "id": "39457ad3-07be-4cb6-a823-b19855e8b01b",
+      "name": "Respond to Chat",
+      "type": "@n8n/n8n-nodes-langchain.chat",
+      "position": [
+        -496,
+        -16
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "model": "Qwen2.5:latest",
+        "options": {}
+      },
+      "id": "625aac50-1473-4bf7-9aca-da4441bb4018",
+      "name": "qwen2.5",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "position": [
+        -880,
+        256
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "ollamaApi": {
+          "id": "KLoaICSBpFR345xi",
+          "name": "host.docker.internal"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "description": "Call this tool for math operation",
+        "workflowId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "f44kCEyaOxgTnLiu",
+          "cachedResultUrl": "/workflow/f44kCEyaOxgTnLiu",
+          "cachedResultName": "calculator-service-trigger"
+        },
+        "workflowInputs": {
+          "value": {
+            "a": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('a', ``, 'number') }}",
+            "b": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('b', ``, 'number') }}",
+            "operation": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('operation', ``, 'string') }}"
+          },
+          "schema": [
+            {
+              "id": "a",
+              "type": "number",
+              "display": true,
+              "removed": false,
+              "required": false,
+              "displayName": "a",
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "b",
+              "type": "number",
+              "display": true,
+              "removed": false,
+              "required": false,
+              "displayName": "b",
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "operation",
+              "type": "string",
+              "display": true,
+              "removed": false,
+              "required": false,
+              "displayName": "operation",
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            }
+          ],
+          "mappingMode": "defineBelow",
+          "matchingColumns": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "id": "70db85ab-4072-41a4-bd1b-0531ba3d4646",
+      "name": "Call 'calculator-service-trigger'",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "position": [
+        208,
+        256
+      ],
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "endpointUrl": "http://localhost:5678/mcp-test/81d53804-e74e-413a-8bef-c6806600054x",
+        "options": {}
+      },
+      "id": "c32bf6bd-b1c6-4020-b3a6-59ece77546fe",
+      "name": "mcp-client",
+      "type": "@n8n/n8n-nodes-langchain.mcpClientTool",
+      "position": [
+        -720,
+        256
+      ],
+      "typeVersion": 1.2
+    },
+    {
+      "parameters": {
+        "path": "81d53804-e74e-413a-8bef-c6806600054x"
+      },
+      "id": "faf24c85-cca2-43d2-aefb-90194c7462d5",
+      "name": "mcp-server",
+      "type": "@n8n/n8n-nodes-langchain.mcpTrigger",
+      "position": [
+        -96,
+        -16
+      ],
+      "webhookId": "81d53804-e74e-413a-8bef-c6806600054a",
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "description": "Call to get list of tools available",
+        "workflowId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "aVdyMV0AxIk92VwD",
+          "cachedResultUrl": "/workflow/aVdyMV0AxIk92VwD",
+          "cachedResultName": "list-tool-service-trigger"
+        },
+        "workflowInputs": {
+          "value": {},
+          "mappingMode": "defineBelow"
+        }
+      },
+      "id": "8bb313ba-c04a-43a6-b4ca-36848a405daa",
+      "name": "Call 'list-tool-service-trigger'",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "position": [
+        -96,
+        256
+      ],
+      "typeVersion": 2.2
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "qwen2.5": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Respond to Chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "mcp-client": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "response-parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'list-tool-service-trigger'": {
+      "ai_tool": [
+        []
+      ]
+    },
+    "Call 'calculator-service-trigger'": {
+      "ai_tool": [
+        [
+          {
+            "node": "mcp-server",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'encrypt-decryptservice-trigger'": {
+      "ai_tool": [
+        [
+          {
+            "node": "mcp-server",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "b0822a07-0e13-4389-a4db-3338b888a1b1",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "45c417bac78415cc82936bcd15e18b8c6e14faf1263d26de9f0ef5352823a723"
+  },
+  "id": "KeMfvyVgPNToJs9s",
+  "tags": []
+}

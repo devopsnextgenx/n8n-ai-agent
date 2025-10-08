@@ -41,7 +41,7 @@ services:
       - MYSQL_PASSWORD=p@ssw0rd
     volumes:
       - ./data/mysql-data:/var/lib/mysql
-      - .config/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./config/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
     command: --bind-address=0.0.0.0 --default-authentication-plugin=mysql_native_password
     networks:
       - n8n-network
@@ -54,7 +54,7 @@ services:
       - "6379:6379"
     volumes:
       - ./data/redis-data:/data
-    command: ["redis-server", "--appendonly", "yes", "--loglevel", "verbose"]
+    command: [ "redis-server", "--appendonly", "yes", "--loglevel", "verbose" ]
     networks:
       - n8n-network
 

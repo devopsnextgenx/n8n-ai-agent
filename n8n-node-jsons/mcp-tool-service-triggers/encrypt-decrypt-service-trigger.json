@@ -1,0 +1,269 @@
+{
+  "name": "encrypt-decrypt-service-trigger",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "text"
+            },
+            {
+              "name": "action"
+            }
+          ]
+        }
+      },
+      "id": "5d207659-475e-4e4f-8fb8-70e628eb7d7a",
+      "name": "Start",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "position": [
+        32,
+        224
+      ],
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:6789/tools/encrypt",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"text\": \"{{ $json.text }}\"\n}",
+        "options": {}
+      },
+      "id": "17e07afa-8587-4157-88ff-759624fee52b",
+      "name": "Encrypt",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        720,
+        112
+      ],
+      "typeVersion": 4.1
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:6789/tools/decrypt",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"encoded_text\": \"{{ $json.text }}\"\n}",
+        "options": {}
+      },
+      "id": "7d9434df-134a-4b82-bfdc-f492f72487af",
+      "name": "Decrypt",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        720,
+        352
+      ],
+      "typeVersion": 4.1
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"text\": \"{{$json.text}}\",\n  \"action\": \"{{$json.action}}\"\n}\n",
+        "options": {}
+      },
+      "id": "043bf415-c68e-47c0-9728-2c572cdad1e4",
+      "name": "Parse Request",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        240,
+        224
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "version": 2,
+                  "leftValue": "",
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "id": "77736fd5-ff50-4359-9951-3c0d1eb794ae",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "encrypt"
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "encrypt"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "version": 2,
+                  "leftValue": "",
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "id": "b136e653-3776-4412-a091-42559033e6df",
+                    "operator": {
+                      "name": "filter.operator.equals",
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "decrypt"
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "decrypt"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d0e61e43-d018-4778-b117-f20362e15d23",
+      "name": "Switch",
+      "type": "n8n-nodes-base.switch",
+      "position": [
+        448,
+        224
+      ],
+      "typeVersion": 3.3
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3f696143-e3e3-4bf2-ae1d-af1647fe85d8",
+              "name": "response",
+              "type": "string",
+              "value": "={{ $json.encrypted_text ||  $json.decrypted_text }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "0013eb19-4f85-4de8-ad42-0032be0cbf6a",
+      "name": "format-response",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        976,
+        240
+      ],
+      "typeVersion": 3.4
+    }
+  ],
+  "pinData": {
+    "Start": [
+      {
+        "json": {
+          "text": "emJveA==",
+          "action": "decrypt"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Parse Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Encrypt",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Decrypt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Decrypt": {
+      "main": [
+        [
+          {
+            "node": "format-response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Encrypt": {
+      "main": [
+        [
+          {
+            "node": "format-response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Request": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "a47836a2-5f54-49d2-b8d2-674c8f30ac13",
+  "meta": {
+    "instanceId": "45c417bac78415cc82936bcd15e18b8c6e14faf1263d26de9f0ef5352823a723"
+  },
+  "id": "dv5U3iFzjEA3JgjG",
+  "tags": []
+}

@@ -25,6 +25,7 @@ from mcp_store.tools.calculator import (
 from mcp_store.resources.version import get_version_resource
 from mcp_store.resources.status import get_status_resource
 from mcp_store.resources.tools_list import get_tools_list_resource
+from mcp_store.tools.ScriptExecutor import run_script
 
 logger = get_logger(__name__)
 
@@ -161,6 +162,35 @@ class MCPCryptoServer:
                 return raw_params.encoded_text
             else:
                 raise ValueError(f"Parameters must be a string or an object with 'encoded_text' property. Got: {type(raw_params)}")
+
+        @self.app.tool(name="executeScript", description="Execute a script in the environment. Accepts a Python script as a string and runs it safely. Returns execution result or error.")
+        async def execute_script(script: str) -> Dict[str, Any]:
+            """
+            Execute a Python script in the environment.
+            
+            This tool takes a Python script as input and executes it within the
+            environment. It is designed to run scripts that interact
+            for automating tasks.
+            
+            Args:
+                script: The Python script to execute as a string.
+            
+            Returns:
+                Dict containing:
+                - success: Boolean indicating if execution succeeded
+                - output: Any output or result from the script execution
+                - error: Error message if execution failed
+            
+            Examples:
+                Input: "print('Hello from AI')"
+                Output: {"success": true, "result": null, "error": null}
+            """
+            try:
+                result = run_script(script, logger)
+                return {"success": True, "result": result["result"], "error": None}
+            except Exception as e:
+                logger.error(f"Error executing script: {e}")
+                return {"success": False, "result": None, "error": str(e)}
 
         # Enhanced Crypto Tools with comprehensive metadata and schemas
         @self.app.tool(

@@ -150,7 +150,7 @@ class MCPCryptoServer:
         
         def _process_decrypt_params(raw_params):
             """Process decrypt parameters from various formats."""
-            logger.info(f"Processing decrypt params: {raw_params} (type: {type(raw_params)})")
+            logger.debug(f"Processing decrypt params: {raw_params} (type: {type(raw_params)})")
             
             if isinstance(raw_params, str):
                 # Handle plain string format: "YW1pdGtzaGlyc2FnYXI="

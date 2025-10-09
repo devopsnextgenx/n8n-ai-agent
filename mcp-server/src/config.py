@@ -14,6 +14,7 @@ class ServerConfig(BaseModel):
     """Server configuration model."""
     host: str = Field(default="0.0.0.0", description="Server host address")
     port: int = Field(default=6789, description="Server port number")
+    mode: str = Field(default="auto", description="Server transport mode")
 
 
 class LoggingConfig(BaseModel):
@@ -41,9 +42,9 @@ class ConfigManager:
         """Initialize configuration manager.
         
         Args:
-            config_path: Path to configuration file. Defaults to 'config.yaml'
+            config_path: Path to configuration file. Defaults to 'config.yml'
         """
-        self.config_path = config_path or "config.yaml"
+        self.config_path = config_path or "config.yml"
         self._config: Optional[Config] = None
     
     def load_config(self) -> Config:

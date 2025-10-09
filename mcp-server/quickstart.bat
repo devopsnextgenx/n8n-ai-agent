@@ -27,6 +27,6 @@ echo 📋 Available endpoints:
 echo    • Tools: encrypt, decrypt
 echo    • Resources: version, status, tools_list
 echo.
-echo 💡 Configuration can be modified in config.yaml
+echo 💡 Configuration can be modified in config.yml
 
 pause

@@ -1,9 +1,0 @@
-logging:
-  backup_count: 5
-  file: logs/mcp-server.log
-  format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-  level: INFO
-  max_file_size: 10MB
-server:
-  host: 0.0.0.0
-  port: 6789

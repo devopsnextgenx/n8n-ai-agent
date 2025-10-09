@@ -22,7 +22,7 @@ def test_config():
         import config
         
         # Test default config creation
-        config_manager = config.ConfigManager("test_config.yaml")
+        config_manager = config.ConfigManager("test_config.yml")
         config_obj = config_manager.load_config()
         
         assert config_obj.server.host == "0.0.0.0"
@@ -32,8 +32,8 @@ def test_config():
         print("✅ Configuration test passed")
         
         # Clean up
-        if os.path.exists("test_config.yaml"):
-            os.remove("test_config.yaml")
+        if os.path.exists("test_config.yml"):
+            os.remove("test_config.yml")
             
     except Exception as e:
         print(f"❌ Configuration test failed: {e}")

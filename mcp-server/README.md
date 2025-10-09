@@ -24,12 +24,15 @@ A Model Context Protocol (MCP) server implementation using FastMCP with HTTP tra
 This project uses `uv` for dependency management. Install dependencies:
 
 ```bash
+python -m venv .venv
+source .venv/Scripts/activate
 uv sync
+python.exe -m pip install -e .
 ```
 
 ## Configuration
 
-Copy `config.yaml.example` to `config.yaml` and adjust settings:
+Copy `config.yml.example` to `config.yml` and adjust settings:
 
 ```yaml
 server:
@@ -69,7 +72,7 @@ uv run python dev.py run
 python dev.py run
 ```
 
-The server will be available at `http://localhost:6789` (configurable in `config.yaml`)
+The server will be available at `http://localhost:6789` (configurable in `config.yml`)
 
 ### API Endpoints
 
@@ -100,7 +103,7 @@ Once running, you can access:
 │   └── utils.py
 ├── logs/
 ├── scripts/
-├── config.yaml
+├── config.yml
 └── pyproject.toml
 ```
 

@@ -10,6 +10,7 @@ server:
   
   # Port number for the server
   port: 6789
+  mode: "streamable-http"       # Server transport mode: auto, http, streamable-http, stdio
 
 # Logging configuration
 logging:

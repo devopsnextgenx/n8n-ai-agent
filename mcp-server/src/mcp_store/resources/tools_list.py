@@ -1,6 +1,7 @@
 """Tools list resource for MCP Crypto Server.
 
-This resource provides information about available tools.
+This resource provides static information about available tools.
+It serves as a fallback when dynamic tool discovery fails.
 """
 
 import json
@@ -13,22 +14,81 @@ src_path = Path(__file__).parent.parent.parent
 if str(src_path) not in sys.path:
     sys.path.insert(0, str(src_path))
 
-from utils import get_logger
+from src.utils import get_logger
 
 logger = get_logger(__name__)
 
 
-async def get_tools_list_resource() -> str:
-    """Get list of available tools.
+async def get_tools_list_resource(app=None) -> str:
+    """Get list of available tools, preferably from runtime if app is provided.
+    
+    This function returns a list of tools with their schemas and examples.
+    If a FastMCP app instance is provided, it will dynamically retrieve the tools.
+    Otherwise, it will return static hardcoded information as a fallback.
+    
+    Args:
+        app: Optional FastMCP app instance to get registered tools
     
     Returns:
         str: JSON string containing tools information
     """
     try:
-        logger.info("Retrieving tools list information")
+        # If app is provided, get tools dynamically
+        if app:
+            logger.info("Retrieving dynamic tools list information from FastMCP app")
+            import asyncio
+            from src.mcp_store.tools.tools_list import list_tools
+            
+            # Get tools dynamically using the same function as the listTools tool
+            tools_result = await list_tools(detailed=True, app=app)
+            
+            if tools_result["success"]:
+                tools_info = {
+                    "tools": tools_result["tools"],
+                    "total_tools": tools_result["count"],
+                    "categories": tools_result["categories"],
+                    "transport": "http",
+                    "api_version": "1.0"
+                }
+                return json.dumps(tools_info, indent=2)
+            else:
+                logger.warning(f"Dynamic tools retrieval failed: {tools_result['error']}, using fallback")
+        else:
+            logger.info("No FastMCP app provided, using static tools list information (fallback)")
         
+        # Fallback to static hardcoded tool information
         tools_info = {
             "tools": [
+                {
+                    "name": "listTools",
+                    "description": "Get a list of all available tools with their input/output schemas and descriptions",
+                    "parameters": {
+                        "detailed": {
+                            "type": "boolean",
+                            "description": "Whether to include full schema details and examples in the response",
+                            "required": False
+                        }
+                    },
+                    "returns": {
+                        "success": {"type": "boolean", "description": "Whether operation succeeded"},
+                        "tools": {"type": "array", "description": "List of tools with their schemas and descriptions"},
+                        "count": {"type": "integer", "description": "Total number of available tools"},
+                        "categories": {"type": "array", "description": "Categories of available tools"},
+                        "error": {"type": "string", "description": "Error message if operation failed"}
+                    },
+                    "examples": [
+                        {
+                            "input": {"detailed": False},
+                            "output": {
+                                "success": True,
+                                "tools": [{"name": "encrypt", "description": "Encrypt string to base64"}],
+                                "count": 8,
+                                "categories": ["encryption", "calculator"],
+                                "error": None
+                            }
+                        }
+                    ]
+                },
                 {
                     "name": "encrypt",
                     "description": "Encrypt string to base64",
@@ -235,8 +295,8 @@ async def get_tools_list_resource() -> str:
                     ]
                 }
             ],
-            "total_tools": 7,
-            "categories": ["encryption", "encoding", "base64", "calculator", "mathematics"],
+            "total_tools": 8,
+            "categories": ["encryption", "encoding", "base64", "calculator", "mathematics", "discovery"],
             "transport": "http",
             "api_version": "1.0"
         }

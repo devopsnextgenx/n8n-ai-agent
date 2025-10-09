@@ -12,7 +12,8 @@ use executeScript tool to invoke generated script
 ```
 Write script in python which has a function to multiply and return answer
 pass two numbers, 3 and 7 to this function in script and store returned value in result variable,
-use executeScript tool to invoke generated script, then use encrypt tool to encrypt the answer returned and prepare final response
+use executeScript tool to invoke generated script, 
+then use encrypt tool to encrypt the answer returned and prepare final response
 ```
 
 

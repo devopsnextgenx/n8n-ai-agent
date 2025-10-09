@@ -8,7 +8,7 @@ import asyncio
 import sys
 import json
 from pathlib import Path
-from typing import Any, Dict, Callable, Awaitable
+from typing import Any, Dict, Callable, Awaitable, Optional
 from functools import wraps
 from fastmcp import FastMCP
 from pydantic import BaseModel, Field
@@ -29,6 +29,7 @@ from mcp_store.resources.version import get_version_resource
 from mcp_store.resources.status import get_status_resource
 from mcp_store.resources.tools_list import get_tools_list_resource
 from mcp_store.tools.ScriptExecutor import run_script
+from src.mcp_store.tools.tools_list import list_tools
 
 logger = get_logger(__name__)
 
@@ -478,6 +479,68 @@ class MCPCryptoServer:
                 logger.error(f"Error in modulo tool: {e}")
                 return {"success": False, "error": str(e), "result": None}
         
+        # Define Pydantic model for listTools parameters
+        class ListToolsParams(BaseModel):
+            detailed: bool = Field(
+                False,
+                description="Whether to include full schema details and examples in the response",
+                examples=[True, False]
+            )
+            
+            class Config:
+                json_schema_extra = {
+                    "title": "List Tools Parameters",
+                    "description": "Parameters for listing available tools with their schemas",
+                    "examples": [
+                        {"detailed": False},
+                        {"detailed": True}
+                    ]
+                }
+        
+        @self.app.tool(
+            name="listTools",
+            description="Get a list of all available tools with their input/output schemas and descriptions"
+        )
+        @log_tool_calls
+        async def list_tools_tool(params: Optional[ListToolsParams] = None) -> Dict[str, Any]:
+            """
+            List all available tools with their schemas and descriptions.
+            
+            This tool returns detailed information about all tools registered with
+            the MCP server, including their input parameters, output schemas,
+            and descriptions. Useful for tool discovery and documentation.
+            
+            Args:
+                params: Optional parameters containing:
+                       - detailed: Whether to include full schema details in the response
+            
+            Returns:
+                Dict containing:
+                - success: Boolean indicating if operation succeeded
+                - tools: List of tool information with schemas and descriptions
+                - count: Total number of available tools
+                - categories: Categories of available tools
+                - error: Error message if operation failed
+            
+            Examples:
+                Input: {"detailed": false}
+                Output: {"success": true, "tools": [{name: "encrypt", ...}], ...}
+            """
+            try:
+                detailed = params.detailed if params else False
+                logger.debug(f"List tools tool called with detailed={detailed}")
+                # Pass the FastMCP app instance to dynamically get registered tools
+                return await list_tools(detailed=detailed, app=self.app)
+            except Exception as e:
+                logger.error(f"Error in listTools tool: {e}")
+                return {
+                    "success": False,
+                    "tools": [],
+                    "count": 0,
+                    "categories": [],
+                    "error": str(e)
+                }
+                
         logger.info("MCP tools setup completed")
         
         # Add custom HTTP routes for testing (these are separate from MCP protocol)
@@ -599,12 +662,20 @@ class MCPCryptoServer:
                             "return_schema": {...}
                         }
                     ],
-                    "count": 7,
-                    "categories": ["crypto", "calculator"]
+                    "count": 8,
+                    "categories": ["crypto", "calculator", "discovery"]
                 }
             """
             logger.info("Tools list resource requested")
-            return await get_tools_list_resource()
+            
+            # Use the updated get_tools_list_resource function that supports dynamic retrieval
+            try:
+                # Pass the FastMCP app instance directly to get_tools_list_resource
+                return await get_tools_list_resource(app=self.app)
+            except Exception as e:
+                logger.error(f"Error retrieving tools list: {str(e)}")
+                # Fall back to completely static resource
+                return await get_tools_list_resource()
         
         logger.info("MCP resources setup completed")
     

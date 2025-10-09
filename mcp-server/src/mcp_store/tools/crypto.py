@@ -27,7 +27,7 @@ async def encrypt_tool(text: str) -> Dict[str, Any]:
         Dict containing the base64 encoded result or error
     """
     try:
-        logger.info(f"Encrypting text of length {len(text)}")
+        logger.debug(f"Encrypting text of length {len(text)}")
         
         if not text:
             return {
@@ -38,7 +38,7 @@ async def encrypt_tool(text: str) -> Dict[str, Any]:
         
         encrypted_text = encode_to_base64(text)
         
-        logger.info("Text encrypted successfully")
+        logger.debug("Text encrypted successfully")
         return {
             "success": True,
             "error": None,
@@ -82,7 +82,7 @@ async def decrypt_tool(encoded_text: str) -> Dict[str, Any]:
         Dict containing the decoded result or error
     """
     try:
-        logger.info(f"Decrypting base64 text of length {len(encoded_text)}")
+        logger.debug(f"Decrypting base64 text of length {len(encoded_text)}")
         
         if not encoded_text:
             return {
@@ -101,7 +101,7 @@ async def decrypt_tool(encoded_text: str) -> Dict[str, Any]:
         
         decrypted_text = decode_from_base64(encoded_text)
         
-        logger.info("Base64 text decrypted successfully")
+        logger.debug("Base64 text decrypted successfully")
         return {
             "success": True,
             "error": None,

@@ -61,7 +61,7 @@ class ScriptExecutor:
             # remove print statements from script
             script = "\n".join([line for line in script.split("\n") if "print(" not in line])
             exec(script, global_namespace, local_namespace)
-            self.logger.info("Script executed successfully. Local namespace: %s", local_namespace)
+            self.logger.debug("Script executed successfully. Local namespace: %s", local_namespace)
             # with open("contents/local_namespace.log", 'w', encoding='utf-8') as f:
             #     f.write(str(local_namespace))
             
@@ -121,7 +121,7 @@ def run_script(script_text: str, logger) -> Dict[str, Any]:
     try:
         # Execute the script
         start_time = time.time()
-        logger.info(f"Executing script...")
+        logger.debug(f"Executing script...")
         try:
             result: Any = executor.execute_script(script_text)
         except Exception as e:
@@ -129,8 +129,8 @@ def run_script(script_text: str, logger) -> Dict[str, Any]:
             return {"error": str(e)}
 
         elapsed_time = (time.time() - start_time) * 1000  # Convert to milliseconds
-        logger.info(f"Script execution completed in {elapsed_time:.2f}ms.")
-        logger.info(f"Script result: {result}")
+        logger.debug(f"Script execution completed in {elapsed_time:.2f}ms.")
+        logger.debug(f"Script result: {result}")
         
         # Ensure contents directory exists
         os.makedirs("contents", exist_ok=True)

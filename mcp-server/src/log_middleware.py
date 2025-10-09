@@ -39,7 +39,7 @@ except ImportError:
 
 logger = get_logger(__name__)
 
-def log_tool_calls(func: Callable[..., Awaitable[Dict[str, Any]]]) -> Callable[..., Awaitable[Dict[str, Any]]]:
+def log_tool_calls(func):
     """
     Decorator to log tool inputs and outputs.
     

@@ -73,7 +73,7 @@ async def add_tool(a: Union[int, float], b: Union[int, float]) -> Dict[str, Any]
         Dict containing the addition result or error
     """
     try:
-        logger.info(f"Adding {a} + {b}")
+        logger.debug(f"Adding {a} + {b}")
         
         # Validate inputs
         is_valid, error_msg = _validate_numbers(a, b)
@@ -91,7 +91,7 @@ async def add_tool(a: Union[int, float], b: Union[int, float]) -> Dict[str, Any]
         if isinstance(a, int) and isinstance(b, int):
             result = int(result)
         
-        logger.info(f"Addition successful: {num_a} + {num_b} = {result}")
+        logger.debug(f"Addition successful: {num_a} + {num_b} = {result}")
         return _create_result("add", num_a, num_b, result)
         
     except Exception as e:
@@ -111,7 +111,7 @@ async def subtract_tool(a: Union[int, float], b: Union[int, float]) -> Dict[str,
         Dict containing the subtraction result or error
     """
     try:
-        logger.info(f"Subtracting {a} - {b}")
+        logger.debug(f"Subtracting {a} - {b}")
         
         # Validate inputs
         is_valid, error_msg = _validate_numbers(a, b)
@@ -129,7 +129,7 @@ async def subtract_tool(a: Union[int, float], b: Union[int, float]) -> Dict[str,
         if isinstance(a, int) and isinstance(b, int):
             result = int(result)
         
-        logger.info(f"Subtraction successful: {num_a} - {num_b} = {result}")
+        logger.debug(f"Subtraction successful: {num_a} - {num_b} = {result}")
         return _create_result("subtract", num_a, num_b, result)
         
     except Exception as e:
@@ -149,7 +149,7 @@ async def multiply_tool(a: Union[int, float], b: Union[int, float]) -> Dict[str,
         Dict containing the multiplication result or error
     """
     try:
-        logger.info(f"Multiplying {a} * {b}")
+        logger.debug(f"Multiplying {a} * {b}")
         
         # Validate inputs
         is_valid, error_msg = _validate_numbers(a, b)
@@ -167,7 +167,7 @@ async def multiply_tool(a: Union[int, float], b: Union[int, float]) -> Dict[str,
         if isinstance(a, int) and isinstance(b, int):
             result = int(result)
         
-        logger.info(f"Multiplication successful: {num_a} * {num_b} = {result}")
+        logger.debug(f"Multiplication successful: {num_a} * {num_b} = {result}")
         return _create_result("multiply", num_a, num_b, result)
         
     except Exception as e:
@@ -187,7 +187,7 @@ async def divide_tool(a: Union[int, float], b: Union[int, float]) -> Dict[str, A
         Dict containing the division result or error
     """
     try:
-        logger.info(f"Dividing {a} / {b}")
+        logger.debug(f"Dividing {a} / {b}")
         
         # Validate inputs
         is_valid, error_msg = _validate_numbers(a, b)
@@ -211,7 +211,7 @@ async def divide_tool(a: Union[int, float], b: Union[int, float]) -> Dict[str, A
         if result.is_integer():
             result = int(result)
         
-        logger.info(f"Division successful: {num_a} / {num_b} = {result}")
+        logger.debug(f"Division successful: {num_a} / {num_b} = {result}")
         return _create_result("divide", num_a, num_b, result)
         
     except Exception as e:
@@ -231,7 +231,7 @@ async def modulo_tool(a: Union[int, float], b: Union[int, float]) -> Dict[str, A
         Dict containing the modulo result or error
     """
     try:
-        logger.info(f"Calculating {a} % {b}")
+        logger.debug(f"Calculating {a} % {b}")
         
         # Validate inputs
         is_valid, error_msg = _validate_numbers(a, b)
@@ -255,7 +255,7 @@ async def modulo_tool(a: Union[int, float], b: Union[int, float]) -> Dict[str, A
         if isinstance(a, int) and isinstance(b, int):
             result = int(result)
         
-        logger.info(f"Modulo successful: {num_a} % {num_b} = {result}")
+        logger.debug(f"Modulo successful: {num_a} % {num_b} = {result}")
         return _create_result("modulo", num_a, num_b, result)
         
     except Exception as e:

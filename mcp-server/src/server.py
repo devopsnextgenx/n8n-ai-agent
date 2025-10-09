@@ -21,6 +21,7 @@ if str(src_path) not in sys.path:
 from config import get_config
 from utils import get_logger
 from src.mcp_store.tools.crypto import encrypt_tool, decrypt_tool
+from src.log_middleware import log_tool_calls
 from mcp_store.tools.calculator import (
     add_tool, subtract_tool, multiply_tool, divide_tool, modulo_tool
 )
@@ -30,76 +31,6 @@ from mcp_store.resources.tools_list import get_tools_list_resource
 from mcp_store.tools.ScriptExecutor import run_script
 
 logger = get_logger(__name__)
-
-
-def log_tool_calls(func):
-    """
-    Decorator to log tool inputs and outputs.
-    
-    This decorator logs the input parameters and result of each tool execution.
-    
-    Args:
-        func: The tool function to decorate
-        
-    Returns:
-        Wrapped function that logs inputs and outputs
-    """
-    @wraps(func)
-    async def wrapper(*args, **kwargs):
-        # Get tool name from function or name attribute if available
-        tool_name = getattr(func, "__name__", "unknown_tool")
-        if hasattr(func, "name") and func.name:
-            tool_name = func.name
-            
-        # Log the input parameters (safely)
-        try:
-            # Format parameters for logging
-            params_dict = {}
-            
-            # Handle positional args (except self)
-            start_idx = 1 if len(args) > 0 and not isinstance(args[0], str) and hasattr(args[0], '__dict__') else 0
-            
-            for i, arg in enumerate(args[start_idx:]):
-                param_name = f"arg{i}"
-                
-                # Handle different parameter types
-                if hasattr(arg, 'model_dump'):  # Pydantic v2
-                    params_dict[param_name] = arg.model_dump()
-                elif hasattr(arg, 'dict'):  # Pydantic v1
-                    params_dict[param_name] = arg.dict()
-                elif hasattr(arg, '__dict__'):
-                    params_dict[param_name] = f"{arg.__class__.__name__}(...)"
-                else:
-                    params_dict[param_name] = arg
-                    
-            # Add kwargs
-            params_dict.update(kwargs)
-            
-            # Format for logging (limit size)
-            params_str = json.dumps(params_dict, default=str)[:1000] + ("..." if len(json.dumps(params_dict, default=str)) > 1000 else "")
-            logger.info(f"TOOL INPUT: {tool_name} - Parameters: {params_str}")
-        except Exception as e:
-            logger.warning(f"Failed to log input for tool {tool_name}: {str(e)}")
-        
-        # Execute the actual function
-        try:
-            result = await func(*args, **kwargs)
-            
-            # Log the result (safely)
-            try:
-                result_str = json.dumps(result, default=str)[:1000] + ("..." if len(json.dumps(result, default=str)) > 1000 else "")
-                logger.info(f"TOOL OUTPUT: {tool_name} - Result: {result_str}")
-            except Exception as e:
-                logger.warning(f"Failed to log output for tool {tool_name}: {str(e)}")
-                
-            return result
-            
-        except Exception as e:
-            # Log the exception
-            logger.error(f"TOOL ERROR: {tool_name} - Exception: {str(e)}")
-            raise
-            
-    return wrapper
 
 
 
@@ -298,7 +229,7 @@ class MCPCryptoServer:
             """
             try:
                 text = _process_encrypt_params(params)
-                logger.info(f"Encrypt tool called with text length: {len(text)}")
+                logger.debug(f"Encrypt tool called with text length: {len(text)}")
                 return await encrypt_tool(text)
             except Exception as e:
                 logger.error(f"Error in encrypt tool: {e}")
@@ -334,7 +265,7 @@ class MCPCryptoServer:
             """
             try:
                 encoded_text = _process_decrypt_params(params)
-                logger.info(f"Decrypt tool called with encoded text length: {len(encoded_text)}")
+                logger.debug(f"Decrypt tool called with encoded text length: {len(encoded_text)}")
                 return await decrypt_tool(encoded_text)
             except Exception as e:
                 logger.error(f"Error in decrypt tool: {e}")
@@ -343,7 +274,7 @@ class MCPCryptoServer:
         # Custom handler to process calculator parameters
         def _process_calculator_params(raw_params):
             """Process calculator parameters from various formats."""
-            logger.info(f"Processing calculator params: {raw_params} (type: {type(raw_params)})")
+            logger.debug(f"Processing calculator params: {raw_params} (type: {type(raw_params)})")
             
             if isinstance(raw_params, list):
                 # Handle array format: [3, 4]
@@ -393,7 +324,7 @@ class MCPCryptoServer:
             """
             try:
                 a, b = _process_calculator_params(params)
-                logger.info(f"Add tool called: {a} + {b}")
+                logger.debug(f"Add tool called: {a} + {b}")
                 return await add_tool(a, b)
             except Exception as e:
                 logger.error(f"Error in add tool: {e}")
@@ -430,7 +361,7 @@ class MCPCryptoServer:
             """
             try:
                 a, b = _process_calculator_params(params)
-                logger.info(f"Subtract tool called: {a} - {b}")
+                logger.debug(f"Subtract tool called: {a} - {b}")
                 return await subtract_tool(a, b)
             except Exception as e:
                 logger.error(f"Error in subtract tool: {e}")
@@ -467,7 +398,7 @@ class MCPCryptoServer:
             """
             try:
                 a, b = _process_calculator_params(params)
-                logger.info(f"Multiply tool called: {a} * {b}")
+                logger.debug(f"Multiply tool called: {a} * {b}")
                 return await multiply_tool(a, b)
             except Exception as e:
                 logger.error(f"Error in multiply tool: {e}")
@@ -504,7 +435,7 @@ class MCPCryptoServer:
             """
             try:
                 a, b = _process_calculator_params(params)
-                logger.info(f"Divide tool called: {a} / {b}")
+                logger.debug(f"Divide tool called: {a} / {b}")
                 return await divide_tool(a, b)
             except Exception as e:
                 logger.error(f"Error in divide tool: {e}")
@@ -541,7 +472,7 @@ class MCPCryptoServer:
             """
             try:
                 a, b = _process_calculator_params(params)
-                logger.info(f"Modulo tool called: {a} % {b}")
+                logger.debug(f"Modulo tool called: {a} % {b}")
                 return await modulo_tool(a, b)
             except Exception as e:
                 logger.error(f"Error in modulo tool: {e}")

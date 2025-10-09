@@ -683,61 +683,142 @@ class MCPCryptoServer:
         """Add custom HTTP routes for testing (separate from MCP protocol)."""
         logger.info("Adding test routes for browser access")
         
+        from starlette.responses import JSONResponse, HTMLResponse
+        
         # Get the underlying HTTP app and add custom routes
         @self.app.custom_route("/", methods=["GET"])
         async def root_endpoint(request):
             """Root endpoint for testing."""
-            from starlette.responses import JSONResponse
-            
-            # Get tools and resources from FastMCP (these might be async)
-            try:
-                tools = await self.app.get_tools() if asyncio.iscoroutinefunction(self.app.get_tools) else self.app.get_tools()
-                resources = await self.app.get_resources() if asyncio.iscoroutinefunction(self.app.get_resources) else self.app.get_resources()
-            except Exception as e:
-                logger.warning(f"Could not get tools/resources: {e}")
-                tools = []
-                resources = []
-            
-            response_data = {
-                "message": "MCP Crypto Server (FastMCP)",
-                "status": "running",
-                "version": "0.1.0",
-                "protocol": "MCP (Model Context Protocol)",
-                "mcp_endpoint": "/mcp",
-                "test_endpoints": {
-                    "root": "GET /",
-                    "tools_list": "GET /test/tools",
-                    "resources_list": "GET /test/resources", 
-                    "health": "GET /test/health"
-                },
-                "tools_count": len(tools) if tools else 0,
-                "resources_count": len(resources) if resources else 0,
-                "tools": [{"name": getattr(tool, 'name', str(tool)), "description": getattr(tool, 'description', '')} for tool in (tools or [])],
-                "resources": [{"name": getattr(resource, 'name', str(resource)), "description": getattr(resource, 'description', '')} for resource in (resources or [])]
-            }
-            return JSONResponse(response_data)
+            html_content = """
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>MCP Server</title>
+                <style>
+                    * { margin: 0; padding: 0; box-sizing: border-box; }
+                    body {
+                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        min-height: 100vh;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        padding: 20px;
+                    }
+                    .container {
+                        background: white;
+                        border-radius: 16px;
+                        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+                        max-width: 600px;
+                        width: 100%;
+                        padding: 48px;
+                        text-align: center;
+                    }
+                    .status {
+                        display: inline-block;
+                        padding: 8px 16px;
+                        background: #10b981;
+                        color: white;
+                        border-radius: 20px;
+                        font-size: 14px;
+                        font-weight: 600;
+                        margin-bottom: 24px;
+                    }
+                    h1 { font-size: 32px; color: #1f2937; margin-bottom: 16px; }
+                    .description { color: #6b7280; font-size: 16px; line-height: 1.6; margin-bottom: 32px; }
+                    .endpoint {
+                        background: #f3f4f6;
+                        border: 2px solid #e5e7eb;
+                        border-radius: 8px;
+                        padding: 16px;
+                        margin-bottom: 24px;
+                    }
+                    .endpoint-label {
+                        font-size: 12px;
+                        color: #6b7280;
+                        text-transform: uppercase;
+                        font-weight: 600;
+                        margin-bottom: 8px;
+                    }
+                    .endpoint-url {
+                        font-family: 'Monaco', 'Courier New', monospace;
+                        font-size: 18px;
+                        color: #667eea;
+                        font-weight: 600;
+                    }
+                    .link { color: #667eea; text-decoration: none; font-weight: 600; }
+                    .link:hover { text-decoration: underline; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="status">✓ Server Running</div>
+                    <h1>🚀 MCP Server</h1>
+                    <p class="description">
+                        Model Context Protocol server is up and running. 
+                        Connect your MCP client to the endpoint below.
+                    </p>
+                    <div class="endpoint">
+                        <div class="endpoint-label">MCP Endpoint</div>
+                        <div class="endpoint-url">/mcp</div>
+                    </div>
+                    <div>
+                        <a href="/test/tools" class="link">View Tools</a> | 
+                        <a href="/test/resources" class="link">View Resources</a> | 
+                        <a href="/test/health" class="link">Health Check</a>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+            return HTMLResponse(content=html_content)
         
         @self.app.custom_route("/test/health", methods=["GET"])
         async def health_endpoint(request):
             """Health check endpoint."""
-            from starlette.responses import JSONResponse
             return JSONResponse({"status": "healthy", "server": "MCP Crypto Server (FastMCP)"})
         
         @self.app.custom_route("/test/tools", methods=["GET"])
         async def tools_list_endpoint(request):
-            """List all registered MCP tools."""
-            from starlette.responses import JSONResponse
+            """List all registered MCP tools with enhanced metadata."""
             try:
-                tools = await self.app.get_tools() if asyncio.iscoroutinefunction(self.app.get_tools) else self.app.get_tools()
-                response_data = {
-                    "tools": [
-                        {
-                            "name": getattr(tool, 'name', str(tool)),
+                # Get tools from FastMCP - it returns a dict, not a list
+                tools_dict = self.app.get_tools()
+                if asyncio.iscoroutine(tools_dict):
+                    tools_dict = await tools_dict
+                
+                # Convert tools dict to list format
+                enhanced_tools = []
+                if isinstance(tools_dict, dict):
+                    for tool_name, tool in tools_dict.items():
+                        tool_info = {
+                            "name": tool_name,
                             "description": getattr(tool, 'description', ''),
-                            "schema": getattr(tool, 'input_schema', None)
-                        } for tool in (tools or [])
-                    ],
-                    "count": len(tools) if tools else 0
+                            "input_schema": getattr(tool, 'input_schema', None)
+                        }
+                        
+                        # Add Pydantic schema information if available
+                        if tool_name == "encrypt":
+                            tool_info["pydantic_schema"] = EncryptParams.model_json_schema()
+                            tool_info["examples"] = [{"text": "Hello World"}]
+                        elif tool_name == "decrypt":
+                            tool_info["pydantic_schema"] = DecryptParams.model_json_schema()
+                            tool_info["examples"] = [{"encoded_text": "SGVsbG8gV29ybGQ="}]
+                        elif tool_name in ["add", "subtract", "multiply", "divide", "modulo"]:
+                            tool_info["pydantic_schema"] = CalculatorParams.model_json_schema()
+                            tool_info["examples"] = [{"a": 10, "b": 5}]
+                        
+                        enhanced_tools.append(tool_info)
+                
+                response_data = {
+                    "tools": enhanced_tools,
+                    "count": len(enhanced_tools),
+                    "metadata": {
+                        "crypto_tools": ["encrypt", "decrypt"],
+                        "calculator_tools": ["add", "subtract", "multiply", "divide", "modulo"]
+                    }
                 }
                 return JSONResponse(response_data)
             except Exception as e:
@@ -747,142 +828,32 @@ class MCPCryptoServer:
         @self.app.custom_route("/test/resources", methods=["GET"])
         async def resources_list_endpoint(request):
             """List all registered MCP resources."""
-            from starlette.responses import JSONResponse
             try:
-                resources = await self.app.get_resources() if asyncio.iscoroutinefunction(self.app.get_resources) else self.app.get_resources()
-                response_data = {
-                    "resources": [
-                        {
-                            "name": getattr(resource, 'name', str(resource)),
+                # Get resources from FastMCP - it returns a dict, not a list
+                resources_dict = self.app.get_resources()
+                if asyncio.iscoroutine(resources_dict):
+                    resources_dict = await resources_dict
+                
+                # Convert resources dict to list format
+                resources_list = []
+                if isinstance(resources_dict, dict):
+                    for resource_name, resource in resources_dict.items():
+                        resource_info = {
+                            "name": resource_name,
                             "description": getattr(resource, 'description', ''),
                             "uri": getattr(resource, 'uri', None),
                             "mime_type": getattr(resource, 'mime_type', None)
-                        } for resource in (resources or [])
-                    ],
-                    "count": len(resources) if resources else 0
+                        }
+                        resources_list.append(resource_info)
+                
+                response_data = {
+                    "resources": resources_list,
+                    "count": len(resources_list)
                 }
                 return JSONResponse(response_data)
             except Exception as e:
                 logger.error(f"Error getting resources: {e}")
                 return JSONResponse({"error": str(e), "resources": [], "count": 0}, status_code=500)
-        
-        logger.info("Test routes added successfully")
-    
-    def _add_test_routes(self) -> None:
-        """Add custom HTTP routes for testing (separate from MCP protocol)."""
-        logger.info("Adding test routes for browser access")
-        
-        # Get the underlying HTTP app and add custom routes
-        @self.app.custom_route("/", methods=["GET"])
-        async def root_endpoint(request):
-            """Root endpoint for testing."""
-            import json
-            
-            # Get tools and resources from FastMCP (these might be async)
-            try:
-                tools = await self.app.get_tools() if asyncio.iscoroutinefunction(self.app.get_tools) else self.app.get_tools()
-                resources = await self.app.get_resources() if asyncio.iscoroutinefunction(self.app.get_resources) else self.app.get_resources()
-            except Exception as e:
-                logger.warning(f"Could not get tools/resources: {e}")
-                tools = []
-                resources = []
-            
-            return {
-                "message": "MCP Crypto Server (FastMCP)",
-                "status": "running",
-                "version": "0.1.0",
-                "protocol": "MCP (Model Context Protocol)",
-                "mcp_endpoint": "/mcp",
-                "test_endpoints": {
-                    "root": "GET /",
-                    "tools_list": "GET /test/tools",
-                    "resources_list": "GET /test/resources", 
-                    "health": "GET /test/health"
-                },
-                "tools_count": len(tools) if tools else 0,
-                "resources_count": len(resources) if resources else 0,
-                "tools": [{"name": getattr(tool, 'name', str(tool)), "description": getattr(tool, 'description', '')} for tool in (tools or [])],
-                "resources": [{"name": getattr(resource, 'name', str(resource)), "description": getattr(resource, 'description', '')} for resource in (resources or [])]
-            }
-        
-        @self.app.custom_route("/test/health", methods=["GET"])
-        async def health_endpoint(request):
-            """Health check endpoint."""
-            return {"status": "healthy", "server": "MCP Crypto Server (FastMCP)"}
-        
-        @self.app.custom_route("/test/tools", methods=["GET"])
-        async def tools_list_endpoint(request):
-            """List all registered MCP tools with enhanced metadata."""
-            try:
-                tools = await self.app.get_tools() if asyncio.iscoroutinefunction(self.app.get_tools) else self.app.get_tools()
-                
-                # Enhanced tool information with schemas
-                enhanced_tools = []
-                for tool in (tools or []):
-                    tool_info = {
-                        "name": getattr(tool, 'name', str(tool)),
-                        "description": getattr(tool, 'description', ''),
-                        "input_schema": getattr(tool, 'input_schema', None)
-                    }
-                    
-                    # Add Pydantic schema information if available
-                    tool_name = tool_info["name"]
-                    if tool_name in ["encrypt"]:
-                        tool_info["pydantic_schema"] = EncryptParams.model_json_schema()
-                        tool_info["examples"] = [
-                            {"text": "Hello World"},
-                            {"text": "This is a secret message"}
-                        ]
-                    elif tool_name in ["decrypt"]:
-                        tool_info["pydantic_schema"] = DecryptParams.model_json_schema()
-                        tool_info["examples"] = [
-                            {"encoded_text": "SGVsbG8gV29ybGQ="},
-                            {"encoded_text": "VGhpcyBpcyBhIHNlY3JldCBtZXNzYWdl"}
-                        ]
-                    elif tool_name in ["add", "subtract", "multiply", "divide", "modulo"]:
-                        tool_info["pydantic_schema"] = CalculatorParams.model_json_schema()
-                        tool_info["examples"] = [
-                            {"a": 10, "b": 5},
-                            {"a": 3.14, "b": 2.0}
-                        ]
-                    
-                    enhanced_tools.append(tool_info)
-                
-                return {
-                    "tools": enhanced_tools,
-                    "count": len(enhanced_tools),
-                    "metadata": {
-                        "crypto_tools": ["encrypt", "decrypt"],
-                        "calculator_tools": ["add", "subtract", "multiply", "divide", "modulo"],
-                        "parameter_formats": {
-                            "crypto": "String or {text: string} / {encoded_text: string}",
-                            "calculator": "{a: number, b: number}"
-                        }
-                    }
-                }
-            except Exception as e:
-                logger.error(f"Error getting tools: {e}")
-                return {"error": str(e), "tools": [], "count": 0}
-        
-        @self.app.custom_route("/test/resources", methods=["GET"])
-        async def resources_list_endpoint(request):
-            """List all registered MCP resources."""
-            try:
-                resources = await self.app.get_resources() if asyncio.iscoroutinefunction(self.app.get_resources) else self.app.get_resources()
-                return {
-                    "resources": [
-                        {
-                            "name": getattr(resource, 'name', str(resource)),
-                            "description": getattr(resource, 'description', ''),
-                            "uri": getattr(resource, 'uri', None),
-                            "mime_type": getattr(resource, 'mime_type', None)
-                        } for resource in (resources or [])
-                    ],
-                    "count": len(resources) if resources else 0
-                }
-            except Exception as e:
-                logger.error(f"Error getting resources: {e}")
-                return {"error": str(e), "resources": [], "count": 0}
         
         logger.info("Test routes added successfully")
     
@@ -934,8 +905,8 @@ class MCPCryptoServer:
         if mode == "builtin" or mode == "auto":
             try:
                 logger.info("Attempting to start with FastMCP built-in server...")
-                # Use FastMCP's built-in server
-                await self.app.run()
+                # Use FastMCP's built-in server - it's not async in newer versions
+                self.app.run()
                 return
             except Exception as e:
                 if mode == "builtin":
@@ -972,22 +943,9 @@ class MCPCryptoServer:
             if mode != "auto":
                 raise
             
-            # Final fallback: Use the working FastAPI server
-            logger.info("All FastMCP modes failed, using fallback FastAPI server...")
-            from fastapi_server import create_fastapi_server
-            
-            fallback_app = create_fastapi_server()
-            
-            uvicorn_config = uvicorn.Config(
-                app=fallback_app,
-                host=host,
-                port=port,
-                log_level="info",
-                access_log=True
-            )
-            
-            server = uvicorn.Server(uvicorn_config)
-            await server.serve()
+            # Final fallback: Log error and exit gracefully
+            logger.error("All server startup modes failed. Please check your FastMCP installation.")
+            raise Exception("Failed to start server in any mode")
     
     def run_server(self, mode: str = "auto") -> None:
         """Run the MCP server (synchronous version).

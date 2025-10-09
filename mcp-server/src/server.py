@@ -6,8 +6,10 @@ all tools and resources using proper MCP protocol.
 
 import asyncio
 import sys
+import json
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Callable, Awaitable
+from functools import wraps
 from fastmcp import FastMCP
 from pydantic import BaseModel, Field
 
@@ -28,6 +30,77 @@ from mcp_store.resources.tools_list import get_tools_list_resource
 from mcp_store.tools.ScriptExecutor import run_script
 
 logger = get_logger(__name__)
+
+
+def log_tool_calls(func):
+    """
+    Decorator to log tool inputs and outputs.
+    
+    This decorator logs the input parameters and result of each tool execution.
+    
+    Args:
+        func: The tool function to decorate
+        
+    Returns:
+        Wrapped function that logs inputs and outputs
+    """
+    @wraps(func)
+    async def wrapper(*args, **kwargs):
+        # Get tool name from function or name attribute if available
+        tool_name = getattr(func, "__name__", "unknown_tool")
+        if hasattr(func, "name") and func.name:
+            tool_name = func.name
+            
+        # Log the input parameters (safely)
+        try:
+            # Format parameters for logging
+            params_dict = {}
+            
+            # Handle positional args (except self)
+            start_idx = 1 if len(args) > 0 and not isinstance(args[0], str) and hasattr(args[0], '__dict__') else 0
+            
+            for i, arg in enumerate(args[start_idx:]):
+                param_name = f"arg{i}"
+                
+                # Handle different parameter types
+                if hasattr(arg, 'model_dump'):  # Pydantic v2
+                    params_dict[param_name] = arg.model_dump()
+                elif hasattr(arg, 'dict'):  # Pydantic v1
+                    params_dict[param_name] = arg.dict()
+                elif hasattr(arg, '__dict__'):
+                    params_dict[param_name] = f"{arg.__class__.__name__}(...)"
+                else:
+                    params_dict[param_name] = arg
+                    
+            # Add kwargs
+            params_dict.update(kwargs)
+            
+            # Format for logging (limit size)
+            params_str = json.dumps(params_dict, default=str)[:1000] + ("..." if len(json.dumps(params_dict, default=str)) > 1000 else "")
+            logger.info(f"TOOL INPUT: {tool_name} - Parameters: {params_str}")
+        except Exception as e:
+            logger.warning(f"Failed to log input for tool {tool_name}: {str(e)}")
+        
+        # Execute the actual function
+        try:
+            result = await func(*args, **kwargs)
+            
+            # Log the result (safely)
+            try:
+                result_str = json.dumps(result, default=str)[:1000] + ("..." if len(json.dumps(result, default=str)) > 1000 else "")
+                logger.info(f"TOOL OUTPUT: {tool_name} - Result: {result_str}")
+            except Exception as e:
+                logger.warning(f"Failed to log output for tool {tool_name}: {str(e)}")
+                
+            return result
+            
+        except Exception as e:
+            # Log the exception
+            logger.error(f"TOOL ERROR: {tool_name} - Exception: {str(e)}")
+            raise
+            
+    return wrapper
+
 
 
 # Pydantic models for MCP tool parameters with comprehensive schemas
@@ -164,6 +237,7 @@ class MCPCryptoServer:
                 raise ValueError(f"Parameters must be a string or an object with 'encoded_text' property. Got: {type(raw_params)}")
 
         @self.app.tool(name="executeScript", description="Execute a script in the environment. Accepts a Python script as a string and runs it safely. Returns execution result or error.")
+        @log_tool_calls
         async def execute_script(script: str) -> Dict[str, Any]:
             """
             Execute a Python script in the environment.
@@ -197,6 +271,7 @@ class MCPCryptoServer:
             name="encrypt",
             description="Encode text to base64 format. Accepts either a plain string or an object with 'text' property. Returns success status, encoded result, and length information."
         )
+        @log_tool_calls
         async def encrypt(params: EncryptParams) -> Dict[str, Any]:
             """
             Encrypt (encode) a plain text string to base64 format.
@@ -233,6 +308,7 @@ class MCPCryptoServer:
             name="decrypt", 
             description="Decode base64 string back to original text. Accepts either a plain base64 string or an object with 'encoded_text' property. Returns success status, decoded result, and length information."
         )
+        @log_tool_calls
         async def decrypt(params: DecryptParams) -> Dict[str, Any]:
             """
             Decrypt (decode) a base64 encoded string back to its original text.
@@ -290,6 +366,7 @@ class MCPCryptoServer:
             name="add",
             description="Add two numbers together. Accepts object {a: number, b: number}. Returns operation details and sum result."
         )
+        @log_tool_calls
         async def add(params: CalculatorParams):
             """
             Add two numbers and return the sum.
@@ -326,6 +403,7 @@ class MCPCryptoServer:
             name="subtract",
             description="Subtract second number from first number. Accepts object {a: minuend, b: subtrahend}. Returns operation details and difference result."
         )
+        @log_tool_calls
         async def subtract(params: CalculatorParams):
             """
             Subtract the second number from the first number.
@@ -362,6 +440,7 @@ class MCPCryptoServer:
             name="multiply",
             description="Multiply two numbers together. Accepts object {a: number, b: number}. Returns operation details and product result."
         )
+        @log_tool_calls
         async def multiply(params: CalculatorParams):
             """
             Multiply two numbers and return the product.
@@ -398,6 +477,7 @@ class MCPCryptoServer:
             name="divide",
             description="Divide first number by second number. Accepts object {a: dividend, b: divisor}. Includes division by zero protection. Returns operation details and quotient result."
         )
+        @log_tool_calls
         async def divide(params: CalculatorParams):
             """
             Divide the first number by the second number.
@@ -434,6 +514,7 @@ class MCPCryptoServer:
             name="modulo",
             description="Calculate remainder of first number divided by second number. Accepts object {a: dividend, b: divisor}. Includes modulo by zero protection. Returns operation details and remainder result."
         )
+        @log_tool_calls
         async def modulo(params: CalculatorParams):
             """
             Calculate the modulo (remainder) of dividing the first number by the second.
@@ -481,6 +562,7 @@ class MCPCryptoServer:
             description="Current MCP server version information including build details and compatibility",
             mime_type="application/json"
         )
+        @log_tool_calls
         async def version_resource() -> str:
             """
             Get current MCP server version and build information.
@@ -514,6 +596,7 @@ class MCPCryptoServer:
             description="Current MCP server operational status and health information",
             mime_type="application/json"
         )
+        @log_tool_calls
         async def status_resource() -> str:
             """
             Get current MCP server operational status and health metrics.
@@ -551,6 +634,7 @@ class MCPCryptoServer:
             description="Comprehensive list of all available MCP tools with detailed metadata",
             mime_type="application/json"
         )
+        @log_tool_calls
         async def tools_list_resource() -> str:
             """
             Get comprehensive list of all available MCP tools with their metadata.

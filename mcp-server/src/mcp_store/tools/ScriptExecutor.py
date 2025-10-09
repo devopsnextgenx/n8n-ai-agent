@@ -7,7 +7,7 @@ import os
 class ScriptExecutor:
     def __init__(self, logger, safe_modules=None):
         # Define allowed modules for importing
-        self.safe_modules = safe_modules or {'math', 'datetime', 'json', 'random', 'types'}
+        self.safe_modules = safe_modules or {'math', 'datetime', 'json', 'random', 'types', 'base64', 'cryptography'}
         self.logger = logger
 
     def validate_imports(self, script: str) -> bool:

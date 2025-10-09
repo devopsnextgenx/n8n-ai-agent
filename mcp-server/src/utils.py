@@ -13,12 +13,21 @@ from pathlib import Path
 from logging.handlers import RotatingFileHandler
 from typing import Optional, Union
 
-# Handle imports - try relative first, fall back to absolute
+# Handle imports - try different import paths based on how the module is used
 try:
-    from .config import LoggingConfig
+    # Try relative import first (when used as a package)
+    from .config import LoggingConfig, get_config
 except ImportError:
-    # If relative import fails, try absolute import
-    from config import LoggingConfig
+    try:
+        # Try absolute import with src prefix (when run from project root)
+        from src.config import LoggingConfig, get_config
+    except ImportError:
+        # Fallback to direct import (when in the same directory)
+        from config import LoggingConfig, get_config
+
+# Cache for logging configuration
+_logging_configured = False
+_logging_config_cache = None
 
 
 def setup_logging(logging_config: LoggingConfig) -> logging.Logger:
@@ -30,6 +39,12 @@ def setup_logging(logging_config: LoggingConfig) -> logging.Logger:
     Returns:
         logging.Logger: Configured logger instance
     """
+    global _logging_configured, _logging_config_cache
+    
+    # Cache the logging configuration for reuse by get_logger
+    _logging_config_cache = logging_config
+    _logging_configured = True
+    
     # Create logs directory if it doesn't exist
     log_file_path = Path(logging_config.file)
     log_file_path.parent.mkdir(parents=True, exist_ok=True)
@@ -62,6 +77,8 @@ def setup_logging(logging_config: LoggingConfig) -> logging.Logger:
     file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
+    
+    logger.debug("Logging configured successfully")
     
     return logger
 
@@ -177,14 +194,72 @@ def validate_base64(encoded_text: str) -> bool:
 
 
 def get_logger(name: Optional[str] = None) -> logging.Logger:
-    """Get logger instance.
+    """Get logger instance configured according to config.yml.
+    
+    If logging has not been set up yet, this function will attempt to
+    set it up using the cached configuration or by loading the configuration
+    from config.yml.
     
     Args:
         name: Logger name, defaults to module name
         
     Returns:
-        logging.Logger: Logger instance
+        logging.Logger: Configured logger instance
     """
+    global _logging_configured
+    
     if name is None:
         name = "mcp_crypto_server"
-    return logging.getLogger(name)
+    
+    # Create the proper logger name with namespace
+    if name != "mcp_crypto_server" and not name.startswith("mcp_crypto_server."):
+        logger_name = f"mcp_crypto_server.{name}"
+    else:
+        logger_name = name
+    
+    # Check if logging system is already configured
+    if not _logging_configured:
+        # Get the root logger for MCP to check if it's configured
+        root_logger = logging.getLogger("mcp_crypto_server")
+        
+        # If no handlers, we need to set up logging
+        if not root_logger.handlers:
+            try:
+                # Try to use cached config first if available
+                if _logging_config_cache is not None:
+                    setup_logging(_logging_config_cache)
+                else:
+                    # Otherwise try to load config and set up logging
+                    config = get_config()
+                    setup_logging(config.logging)
+            except Exception as e:
+                # If all else fails, set up a basic console and file logger
+                console_handler = logging.StreamHandler(sys.stdout)
+                formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+                console_handler.setFormatter(formatter)
+                root_logger.addHandler(console_handler)
+                
+                # Try to add a file handler too
+                try:
+                    log_dir = Path("logs")
+                    log_dir.mkdir(exist_ok=True)
+                    file_handler = RotatingFileHandler(
+                        "logs/mcp-server.log",
+                        maxBytes=10 * 1024 * 1024,
+                        backupCount=3,
+                        encoding='utf-8'
+                    )
+                    file_handler.setFormatter(formatter)
+                    root_logger.addHandler(file_handler)
+                except Exception:
+                    # Continue even if file handler setup fails
+                    pass
+                    
+                root_logger.setLevel(logging.INFO)
+                root_logger.warning(f"Could not load logging configuration: {e}. Using default settings.")
+                
+                # Mark as configured so we don't try again
+                _logging_configured = True
+    
+    # Return the requested logger (which inherits from the root logger's configuration)
+    return logging.getLogger(logger_name)

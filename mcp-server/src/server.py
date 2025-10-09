@@ -761,8 +761,12 @@ class MCPCryptoServer:
                         Connect your MCP client to the endpoint below.
                     </p>
                     <div class="endpoint">
-                        <div class="endpoint-label">MCP Endpoint</div>
-                        <div class="endpoint-url">/mcp</div>
+                        <div class="endpoint-label">Host: MCP Endpoint</div>
+                        <div class="endpoint-url">http://localhost:6789/mcp</div>
+                    </div>
+                    <div class="endpoint">
+                        <div class="endpoint-label">Docker: MCP Endpoint</div>
+                        <div class="endpoint-url">http://host.docker.internal:6789/mcp</div>
                     </div>
                     <div>
                         <a href="/test/tools" class="link">View Tools</a> | 
@@ -838,10 +842,16 @@ class MCPCryptoServer:
                 resources_list = []
                 if isinstance(resources_dict, dict):
                     for resource_name, resource in resources_dict.items():
+                        # Convert uri to string if it's an AnyUrl object
+                        uri_value = getattr(resource, 'uri', None)
+                        if uri_value is not None:
+                            # Convert AnyUrl or similar objects to string
+                            uri_value = str(uri_value)
+                        
                         resource_info = {
                             "name": resource_name,
                             "description": getattr(resource, 'description', ''),
-                            "uri": getattr(resource, 'uri', None),
+                            "uri": uri_value,
                             "mime_type": getattr(resource, 'mime_type', None)
                         }
                         resources_list.append(resource_info)

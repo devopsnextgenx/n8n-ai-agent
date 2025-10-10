@@ -70,19 +70,19 @@ async def encrypt_tool(text: str) -> Dict[str, Any]:
             "result": None
         }
 
-async def decrypt_tool(encoded_text: str) -> Dict[str, Any]:
+async def decrypt_tool(text: str) -> Dict[str, Any]:
     """Decrypt (decode) base64 string back to original text.
     
     Args:
-        encoded_text: The base64 encoded string to decode
+        text: The base64 encoded string to decode
         
     Returns:
         Dict containing the decoded result or error
     """
     try:
-        logger.debug(f"Decrypting base64 text of length {len(encoded_text)}")
+        logger.debug(f"Decrypting base64 text of length {len(text)}")
         
-        if not encoded_text:
+        if not text:
             return {
                 "success": False,
                 "error": "Input encoded text cannot be empty",
@@ -90,14 +90,14 @@ async def decrypt_tool(encoded_text: str) -> Dict[str, Any]:
             }
         
         # Validate base64 format first
-        if not validate_base64(encoded_text):
+        if not validate_base64(text):
             return {
                 "success": False,
                 "error": "Invalid base64 format",
                 "result": None
             }
         
-        decrypted_text = decode_from_base64(encoded_text)
+        decrypted_text = decode_from_base64(text)
         
         logger.debug("Base64 text decrypted successfully")
         return {

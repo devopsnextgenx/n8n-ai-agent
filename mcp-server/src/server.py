@@ -146,7 +146,7 @@ class EncryptParams(BaseModel):
 class DecryptParams(BaseModel):
     """Parameters for the decrypt tool that converts base64 back to original text."""
     
-    encoded_text: str = Field(
+    text: str = Field(
         ...,
         description="The base64 encoded string to decode back to original text. Must be valid base64 format.",
         min_length=1,
@@ -159,9 +159,9 @@ class DecryptParams(BaseModel):
             "title": "Decrypt Tool Parameters", 
             "description": "Input parameters for decoding base64 to original text",
             "examples": [
-                {"encoded_text": "SGVsbG8gV29ybGQ="},
-                {"encoded_text": "VGhpcyBpcyBhIHNlY3JldCBtZXNzYWdl"},
-                {"encoded_text": "YW1pdGtzaGlyc2FnYXI="}
+                {"text": "SGVsbG8gV29ybGQ="},
+                {"text": "VGhpcyBpcyBhIHNlY3JldCBtZXNzYWdl"},
+                {"text": "YW1pdGtzaGlyc2FnYXI="}
             ]
         }
 
@@ -270,14 +270,14 @@ def _setup_mcp_tools(server: FastMCP, logger) -> None:
         if isinstance(raw_params, str):
             return raw_params
         elif isinstance(raw_params, dict):
-            if 'encoded_text' in raw_params:
-                return raw_params['encoded_text']
+            if 'text' in raw_params:
+                return raw_params['text']
             else:
-                raise ValueError("Object format requires 'encoded_text' property")
-        elif hasattr(raw_params, 'encoded_text'):
-            return raw_params.encoded_text
+                raise ValueError("Object format requires 'text' property")
+        elif hasattr(raw_params, 'text'):
+            return raw_params.text
         else:
-            raise ValueError(f"Parameters must be a string or an object with 'encoded_text' property. Got: {type(raw_params)}")
+            raise ValueError(f"Parameters must be a string or an object with 'text' property. Got: {type(raw_params)}")
 
     def _process_calculator_params(raw_params):
         """Process calculator parameters from various formats."""
@@ -297,7 +297,7 @@ def _setup_mcp_tools(server: FastMCP, logger) -> None:
             raise ValueError(f"Parameters must be an array of 2 numbers or an object with 'a' and 'b' properties. Got: {type(raw_params)}")
 
     # Script execution tool
-    @server.tool(name="executeScript", description="Execute a script in the environment. Accepts a Python script as a string and runs it safely. Returns execution result or error.")
+    # @server.tool(name="executeScript", description="Execute a script in the environment. Accepts a Python script as a string and runs it safely. Returns execution result or error.")
     @log_tool_calls
     async def execute_script(script: str) -> Dict[str, Any]:
         """Execute a Python script in the environment."""

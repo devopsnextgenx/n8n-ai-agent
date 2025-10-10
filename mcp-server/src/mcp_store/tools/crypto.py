@@ -33,7 +33,7 @@ async def encrypt_tool(text: str) -> Dict[str, Any]:
             return {
                 "success": False,
                 "error": "Input text cannot be empty",
-                "encrypted_text": None
+                "result": None
             }
         
         encrypted_text = encode_to_base64(text)
@@ -42,9 +42,7 @@ async def encrypt_tool(text: str) -> Dict[str, Any]:
         return {
             "success": True,
             "error": None,
-            "encrypted_text": encrypted_text,
-            "original_length": len(text),
-            "encoded_length": len(encrypted_text)
+            "result": encrypted_text,
         }
         
     except TypeError as e:
@@ -53,7 +51,7 @@ async def encrypt_tool(text: str) -> Dict[str, Any]:
         return {
             "success": False,
             "error": error_msg,
-            "encrypted_text": None
+            "result": None
         }
     except UnicodeEncodeError as e:
         error_msg = f"Unicode encoding error: {str(e)}"
@@ -61,7 +59,7 @@ async def encrypt_tool(text: str) -> Dict[str, Any]:
         return {
             "success": False,
             "error": error_msg,
-            "encrypted_text": None
+            "result": None
         }
     except Exception as e:
         error_msg = f"Unexpected error during encryption: {str(e)}"
@@ -69,7 +67,7 @@ async def encrypt_tool(text: str) -> Dict[str, Any]:
         return {
             "success": False,
             "error": error_msg,
-            "encrypted_text": None
+            "result": None
         }
 
 async def decrypt_tool(encoded_text: str) -> Dict[str, Any]:
@@ -88,7 +86,7 @@ async def decrypt_tool(encoded_text: str) -> Dict[str, Any]:
             return {
                 "success": False,
                 "error": "Input encoded text cannot be empty",
-                "decrypted_text": None
+                "result": None
             }
         
         # Validate base64 format first
@@ -96,7 +94,7 @@ async def decrypt_tool(encoded_text: str) -> Dict[str, Any]:
             return {
                 "success": False,
                 "error": "Invalid base64 format",
-                "decrypted_text": None
+                "result": None
             }
         
         decrypted_text = decode_from_base64(encoded_text)
@@ -105,9 +103,7 @@ async def decrypt_tool(encoded_text: str) -> Dict[str, Any]:
         return {
             "success": True,
             "error": None,
-            "decrypted_text": decrypted_text,
-            "encoded_length": len(encoded_text),
-            "decoded_length": len(decrypted_text)
+            "result": decrypted_text,
         }
         
     except TypeError as e:
@@ -116,7 +112,7 @@ async def decrypt_tool(encoded_text: str) -> Dict[str, Any]:
         return {
             "success": False,
             "error": error_msg,
-            "decrypted_text": None
+            "result": None
         }
     except ValueError as e:
         error_msg = f"Value error: {str(e)}"
@@ -124,7 +120,7 @@ async def decrypt_tool(encoded_text: str) -> Dict[str, Any]:
         return {
             "success": False,
             "error": error_msg,
-            "decrypted_text": None
+            "result": None
         }
     except UnicodeDecodeError as e:
         error_msg = f"Unicode decoding error: {str(e)}"
@@ -132,7 +128,7 @@ async def decrypt_tool(encoded_text: str) -> Dict[str, Any]:
         return {
             "success": False,
             "error": error_msg,
-            "decrypted_text": None
+            "result": None
         }
     except Exception as e:
         error_msg = f"Unexpected error during decryption: {str(e)}"
@@ -140,5 +136,5 @@ async def decrypt_tool(encoded_text: str) -> Dict[str, Any]:
         return {
             "success": False,
             "error": error_msg,
-            "decrypted_text": None
+            "result": None
         }

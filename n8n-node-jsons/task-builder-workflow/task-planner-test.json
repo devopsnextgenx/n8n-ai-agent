@@ -1,0 +1,139 @@
+{
+    "name": "task-planner-test",
+    "nodes": [
+        {
+            "parameters": {
+                "options": {
+                    "responseMode": "responseNodes"
+                }
+            },
+            "id": "chat-trigger-test",
+            "name": "When chat message received",
+            "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+            "position": [
+                200,
+                0
+            ],
+            "webhookId": "task-planner-test-trigger",
+            "typeVersion": 1.3
+        },
+        {
+            "parameters": {
+                "hasOutputParser": false,
+                "options": {
+                    "systemMessage": "You are a Task Planning AI Agent. Break down user requests into actionable tasks.\n\nFirst use the available tools to see what MCP tools are available, then create a task plan.\n\nRespond with a valid JSON object in this format:\n\n{\n  \"tasks\": [\n    {\n      \"tool\": \"calculator\",\n      \"task_description\": \"Perform mathematical calculation\",\n      \"task_input\": {\n        \"a\": 10,\n        \"b\": 5,\n        \"operation\": \"add\"\n      },\n      \"dependencies\": [],\n      \"task_id\": \"task_1\"\n    }\n  ]\n}\n\nAlways include dependencies array. Use simple task_id values."
+                }
+            },
+            "id": "test-planner-agent",
+            "name": "Test Task Planner Agent",
+            "type": "@n8n/n8n-nodes-langchain.agent",
+            "position": [
+                400,
+                0
+            ],
+            "typeVersion": 2.2
+        },
+        {
+            "parameters": {
+                "model": "Qwen2.5:latest",
+                "options": {
+                    "temperature": 0.1
+                }
+            },
+            "id": "test-qwen-model",
+            "name": "Qwen2.5 Test Model",
+            "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+            "position": [
+                400,
+                200
+            ],
+            "typeVersion": 1,
+            "credentials": {
+                "ollamaApi": {
+                    "id": "KLoaICSBpFR345xi",
+                    "name": "host.docker.internal"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "endpointUrl": "http://host.docker.internal:6789/mcp",
+                "options": {}
+            },
+            "id": "test-mcp-client",
+            "name": "Test MCP Client",
+            "type": "@n8n/n8n-nodes-langchain.mcpClientTool",
+            "position": [
+                600,
+                200
+            ],
+            "typeVersion": 1.2
+        },
+        {
+            "parameters": {
+                "message": "=Raw Response: {{ JSON.stringify($json) }}",
+                "waitUserReply": false,
+                "options": {}
+            },
+            "id": "test-response",
+            "name": "Test Response",
+            "type": "@n8n/n8n-nodes-langchain.chat",
+            "position": [
+                600,
+                0
+            ],
+            "typeVersion": 1
+        }
+    ],
+    "connections": {
+        "When chat message received": {
+            "main": [
+                [
+                    {
+                        "node": "Test Task Planner Agent",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Test Task Planner Agent": {
+            "main": [
+                [
+                    {
+                        "node": "Test Response",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Qwen2.5 Test Model": {
+            "ai_languageModel": [
+                [
+                    {
+                        "node": "Test Task Planner Agent",
+                        "type": "ai_languageModel",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Test MCP Client": {
+            "ai_tool": [
+                [
+                    {
+                        "node": "Test Task Planner Agent",
+                        "type": "ai_tool",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "active": false,
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "id": "task-planner-test"
+}

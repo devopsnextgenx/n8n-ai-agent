@@ -1,0 +1,661 @@
+{
+    "name": "task-builder-workflow",
+    "nodes": [
+        {
+            "parameters": {
+                "options": {
+                    "responseMode": "responseNodes"
+                }
+            },
+            "id": "ec927fbc-5519-4dcf-b2ce-045101e8c044",
+            "name": "When chat message received",
+            "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+            "position": [
+                -2192,
+                400
+            ],
+            "webhookId": "task-builder-chat-trigger",
+            "typeVersion": 1.3,
+            "alwaysOutputData": false
+        },
+        {
+            "parameters": {
+                "hasOutputParser": true,
+                "options": {
+                    "systemMessage": "You are a Task Planning AI Agent. Break down user requests into actionable tasks.\n\nUse the MCP Client tool to discover available tools first, then create a task plan.\n\nAvailable MCP tools:\n- add: Add two numbers {\"a\": number, \"b\": number}\n- subtract: Subtract two numbers {\"a\": number, \"b\": number}\n- multiply: Multiply two numbers {\"a\": number, \"b\": number}\n- divide: Divide two numbers {\"a\": number, \"b\": number}\n- modulo: Modulo operation {\"a\": number, \"b\": number}\n- encrypt: Encode text to base64 {\"text\": string}\n- decrypt: Decode base64 to text {\"encoded_text\": string}\n- executeScript: Run Python script {\"script\": string}\n- listTools: List available tools {\"detailed\": boolean}\n\nIMPORTANT: You MUST respond with ONLY a valid JSON object in this exact format:\n\n{\n  \"tasks\": [\n    {\n      \"tool\": \"add\",\n      \"task_description\": \"Add 10 and 5\",\n      \"task_input\": {\n        \"a\": 10,\n        \"b\": 5\n      },\n      \"dependencies\": [],\n      \"task_id\": \"task_1\"\n    }\n  ]\n}\n\nRules:\n- Always include \"dependencies\" array (empty [] if no dependencies)\n- Use simple, unique task_id values like \"task_1\", \"task_2\"\n- task_input must be an object with the tool's required parameters (NO 'operation' parameter)\n- Use exact tool names from the list above\n- NO explanations, NO markdown, NO additional text - ONLY the JSON object"
+                }
+            },
+            "id": "a42f6473-9623-4488-af79-d09d0328a213",
+            "name": "Task Planner Agent",
+            "type": "@n8n/n8n-nodes-langchain.agent",
+            "position": [
+                -1904,
+                304
+            ],
+            "typeVersion": 2.2
+        },
+        {
+            "parameters": {
+                "schemaType": "manual",
+                "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"tasks\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"tool\": {\n            \"type\": \"string\"\n          },\n          \"task_description\": {\n            \"type\": \"string\"\n          },\n          \"task_input\": {\n            \"type\": \"object\",\n            \"additionalProperties\": true\n          },\n          \"dependencies\": {\n            \"type\": \"array\",\n            \"items\": {\n              \"type\": \"string\"\n            },\n            \"default\": []\n          },\n          \"task_id\": {\n            \"type\": \"string\"\n          }\n        },\n        \"required\": [\"tool\", \"task_description\", \"task_input\", \"task_id\"],\n        \"additionalProperties\": false\n      }\n    }\n  },\n  \"required\": [\"tasks\"],\n  \"additionalProperties\": false\n}"
+            },
+            "id": "faae2969-cdc8-4b47-8cda-79031e3ea5f6",
+            "name": "Task List Parser",
+            "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+            "position": [
+                -1712,
+                528
+            ],
+            "typeVersion": 1.3
+        },
+        {
+            "parameters": {
+                "model": "Qwen2.5:latest",
+                "options": {
+                    "temperature": 0.1,
+                    "format": "json"
+                }
+            },
+            "id": "3012530c-9460-495b-a4c8-1f9bdf7b20ba",
+            "name": "Qwen2.5 Task Planner",
+            "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+            "position": [
+                -1968,
+                528
+            ],
+            "typeVersion": 1,
+            "credentials": {
+                "ollamaApi": {
+                    "id": "KLoaICSBpFR345xi",
+                    "name": "host.docker.internal"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "mode": "runOnceForEachItem",
+                "jsCode": "// Extract tasks and prepare for dependency resolution\nconst tasks = $input.item.json.output.tasks;\n\n// Create a task registry with status tracking\nconst taskRegistry = {};\nconst pendingTasks = [];\nconst completedTasks = [];\n\n// Initialize all tasks\nfor (const task of tasks) {\n  taskRegistry[task.task_id] = {\n    ...task,\n    status: 'pending',\n    output: null,\n    dependencies: task.dependencies || []\n  };\n  pendingTasks.push(task.task_id);\n}\n\n// Find tasks that can be executed immediately (no dependencies)\nconst readyTasks = [];\nfor (const taskId of pendingTasks) {\n  const task = taskRegistry[taskId];\n  if (task.dependencies.length === 0) {\n    readyTasks.push(task);\n  }\n}\n\nreturn {\n  taskRegistry,\n  pendingTasks,\n  completedTasks,\n  readyTasks,\n  currentBatch: 0,\n  totalTasks: tasks.length\n};"
+            },
+            "id": "95e149a6-7fdb-44eb-b2ef-33844285621e",
+            "name": "Task Dependency Resolver",
+            "type": "n8n-nodes-base.code",
+            "position": [
+                -1504,
+                400
+            ],
+            "typeVersion": 2
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "leftValue": "",
+                        "caseSensitive": true,
+                        "typeValidation": "strict"
+                    },
+                    "conditions": [
+                        {
+                            "id": "task-execution-condition",
+                            "leftValue": "={{ $json.readyTasks.length }}",
+                            "rightValue": 0,
+                            "operator": {
+                                "type": "number",
+                                "operation": "gt"
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "id": "d8f7fd78-c6ef-4e8c-9608-fcdb665be487",
+            "name": "Check Ready Tasks",
+            "type": "n8n-nodes-base.if",
+            "position": [
+                -1200,
+                496
+            ],
+            "typeVersion": 2
+        },
+        {
+            "parameters": {
+                "mode": "runOnceForEachItem",
+                "jsCode": "// Extract ready tasks and create individual items for processing\nconst data = $input.item.json;\nconst readyTasks = data.readyTasks || [];\n\nif (readyTasks.length === 0) {\n  // No ready tasks, return the original data for final processing\n  return data;\n}\n\n// Get the first ready task to process\nconst currentTask = readyTasks[0];\n\n// Return the task data along with the original registry information\nreturn {\n  ...currentTask,\n  originalData: data\n};"
+            },
+            "id": "c3d445e1-d29e-4759-89a1-f9071bd49346",
+            "name": "Process Ready Task",
+            "type": "n8n-nodes-base.code",
+            "position": [
+                -1056,
+                144
+            ],
+            "typeVersion": 2
+        },
+        {
+            "parameters": {
+                "promptType": "define",
+                "text": "=Execute the ready task using the appropriate MCP tool.\n\nReady Tasks:\n{{ JSON.stringify($json.originalData.readyTasks) }}\n\nCRITICAL INSTRUCTIONS:\n1. You MUST use the MCP Client Executor tool - this is NON-NEGOTIABLE\n2. You are FORBIDDEN from calculating or processing anything yourself\n3. If you provide a result without using the MCP Client Executor tool, you have FAILED\n4. The task_output MUST be the exact result returned by the MCP tool\n5. Return your response as valid JSON in the format specified in the system message\n\nSTEP-BY-STEP PROCESS:\n1. Call MCP Client Executor tool with the exact tool name from task.tool\n2. Pass the exact task.task_input as parameters\n3. Wait for the tool execution result\n4. Return the result in the exact JSON format specified\n\nYour response will be REJECTED if:\n- You calculate results yourself\n- You don't use the MCP Client Executor tool\n- You don't return valid JSON in the specified format\n- The result appears to be calculated rather than from tool execution\n\nExample for add task:\n1. Call MCP Client Executor with tool='add' and parameters from task_input\n2. Get the actual result from the tool\n3. Return JSON with that exact result object",
+                "hasOutputParser": true,
+                "options": {
+                    "systemMessage": "You are a Task Execution AI Agent.\n\nYour ONLY job is to execute tasks using MCP tools. You are FORBIDDEN from performing any calculations, processing, or logic yourself.\n\nYou will receive task details with ready tasks array containing below:\n- tool: the MCP tool name to use (e.g., 'add', 'encrypt', 'decrypt')\n- task_description: what needs to be accomplished  \n- task_input: parameters for the tool\n- task_id: unique identifier\n\nMANDATORY EXECUTION STEPS (NO EXCEPTIONS):\n1. ALWAYS start by using the MCP Client Executor tool\n2. Call the exact tool specified in task.tool property\n3. Pass the exact task.task_input as parameters to the tool\n4. Wait for the actual tool execution result\n5. Use the result EXACTLY as returned by the tool\n6. Return the result in the exact format specified below\n\nFORBIDDEN ACTIONS:\n- NEVER calculate or process anything yourself\n- NEVER provide results without using tools\n- NEVER assume what the result should be\n- NEVER shortcut the tool execution process\n- NEVER use your own knowledge to provide answers\n\nVALIDATION REQUIREMENTS:\n- Every response MUST include evidence of actual tool usage\n- The task_output MUST be the exact result from the MCP tool\n- If you cannot use the tool, report \"failure\" status with error details\n\nRETURN FORMAT (MUST be valid JSON):\n{\n  \"task_description\": \"[copy original task_description]\",\n  \"task_input\": {[copy original task_input object]},\n  \"task_tool\": \"[tool name that was used]\",\n  \"task_output\": {[EXACT result object from MCP tool - NOT your calculation]},\n  \"task_status\": \"success\",\n  \"task_id\": \"[copy original task_id]\"\n}\n\nCRITICAL: You MUST return valid JSON in the exact format above. Do not use any other formatting.\n\nREMEMBER: If you provide any result without actually using the MCP Client Executor tool, you have FAILED your purpose."
+                }
+            },
+            "id": "caaecafc-9b58-4cf1-a1a5-74be2df26159",
+            "name": "Task Executor Agent",
+            "type": "@n8n/n8n-nodes-langchain.agent",
+            "position": [
+                -832,
+                32
+            ],
+            "typeVersion": 2.2
+        },
+        {
+            "parameters": {
+                "endpointUrl": "http://host.docker.internal:6789/mcp",
+                "options": {}
+            },
+            "id": "876f0381-2664-4699-947e-6436e66aee7b",
+            "name": "MCP Client Executor",
+            "type": "@n8n/n8n-nodes-langchain.mcpClientTool",
+            "position": [
+                -752,
+                416
+            ],
+            "typeVersion": 1.2
+        },
+        {
+            "parameters": {
+                "schemaType": "manual",
+                "inputSchema": "{\n  \"$schema\": \"http://json-schema.org/draft-07/schema#\",\n  \"type\": \"object\",\n  \"properties\": {\n    \"task_description\": {\"type\": \"string\"},\n    \"task_input\": {\"type\": \"object\"},\n    \"task_tool\": {\"type\": \"string\"},\n    \"task_output\": {\"type\": \"object\"},\n    \"task_status\": {\"type\": \"string\", \"enum\": [\"success\", \"failure\"]},\n    \"task_id\": {\"type\": \"string\"}\n  },\n  \"required\": [\"task_description\", \"task_input\", \"task_tool\", \"task_output\", \"task_status\", \"task_id\"]\n}"
+            },
+            "id": "5a1e615c-e359-4a4e-a8e0-a578bae02f90",
+            "name": "Task Result Parser",
+            "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+            "position": [
+                -512,
+                384
+            ],
+            "typeVersion": 1.3
+        },
+        {
+            "parameters": {
+                "model": "Qwen2.5:latest",
+                "options": {
+                    "temperature": 0.1
+                }
+            },
+            "id": "6c95c158-6e6f-42c2-b98a-d9d89b64eb3e",
+            "name": "Qwen2.5 Task Executor",
+            "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+            "position": [
+                -944,
+                400
+            ],
+            "typeVersion": 1,
+            "credentials": {
+                "ollamaApi": {
+                    "id": "KLoaICSBpFR345xi",
+                    "name": "host.docker.internal"
+                }
+            }
+        },
+        {
+            "parameters": {},
+            "id": "684b1dcb-3bc1-40c4-b1f6-5f21a4c2981d",
+            "name": "Merge Task Results",
+            "type": "n8n-nodes-base.merge",
+            "position": [
+                -464,
+                144
+            ],
+            "typeVersion": 3
+        },
+        {
+            "parameters": {
+                "jsCode": "// Update task registry with completed task result\nconst taskResult = $input.first().json.output || $input.first().json;\nconst executedTask = $input.last().json;\n\n// Get the original data (task registry info) from the merged inputs\nconst originalData = executedTask.originalData;\n\n// Update the task registry\nconst taskRegistry = { ...originalData.taskRegistry };\nconst completedTasks = [...originalData.completedTasks];\nconst pendingTasks = [...originalData.pendingTasks];\n\n// Mark current task as completed\nif (taskRegistry[taskResult.task_id]) {\n  taskRegistry[taskResult.task_id].status = taskResult.task_status;\n  taskRegistry[taskResult.task_id].output = taskResult.task_output;\n  \n  if (taskResult.task_status === 'success') {\n    completedTasks.push(taskResult.task_id);\n    // Remove from pending\n    const pendingIndex = pendingTasks.indexOf(taskResult.task_id);\n    if (pendingIndex > -1) {\n      pendingTasks.splice(pendingIndex, 1);\n    }\n  }\n}\n\n// Find newly ready tasks (dependencies now satisfied)\nconst readyTasks = [];\nfor (const taskId of pendingTasks) {\n  const task = taskRegistry[taskId];\n  if (task.status === 'pending') {\n    // Check if all dependencies are completed\n    const allDependenciesMet = task.dependencies.every(depId => \n      completedTasks.includes(depId) && \n      taskRegistry[depId].status === 'success'\n    );\n    \n    if (allDependenciesMet) {\n      // Inject dependency outputs into task input\n      const enrichedTask = { ...task };\n      for (const depId of task.dependencies) {\n        const depOutput = taskRegistry[depId].output;\n        // Extract the result from the MCP tool output format\n        if (depOutput && depOutput.result !== undefined) {\n          enrichedTask.task_input = { result: depOutput.result };\n        } else {\n          enrichedTask.task_input = depOutput;\n        }\n      }\n      readyTasks.push(enrichedTask);\n    }\n  }\n}\n\nreturn {\n  taskRegistry,\n  pendingTasks,\n  completedTasks,\n  readyTasks,\n  currentBatch: (originalData.currentBatch || 0) + 1,\n  totalTasks: originalData.totalTasks,\n  lastTaskResult: taskResult\n};"
+            },
+            "id": "8cc78fa1-3823-43d9-b811-b666120fa698",
+            "name": "Update Task Registry",
+            "type": "n8n-nodes-base.code",
+            "position": [
+                -160,
+                144
+            ],
+            "typeVersion": 2
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict",
+                        "version": 1
+                    },
+                    "conditions": [
+                        {
+                            "id": "more-tasks-condition",
+                            "leftValue": "={{ $json.pendingTasks.length }}",
+                            "rightValue": 0,
+                            "operator": {
+                                "type": "number",
+                                "operation": "gt"
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "id": "62f64670-53c2-4268-8a90-782ee87bd20a",
+            "name": "Check More Tasks",
+            "type": "n8n-nodes-base.if",
+            "position": [
+                144,
+                144
+            ],
+            "typeVersion": 2
+        },
+        {
+            "parameters": {
+                "mode": "runOnceForEachItem",
+                "jsCode": "// Collect all completed task results for final response generation\nconst taskRegistry = $input.item.json.taskRegistry;\nconst completedTasks = $input.item.json.completedTasks;\n\nconst taskResults = [];\nfor (const taskId of completedTasks) {\n  const task = taskRegistry[taskId];\n  if (task && task.status === 'success') {\n    taskResults.push({\n      task_description: task.task_description,\n      task_input: task.task_input,\n      task_tool: task.tool,\n      task_output: task.output,\n      task_status: task.status,\n      task_id: taskId\n    });\n  }\n}\n\nreturn {\n  taskResults,\n  totalTasksCompleted: completedTasks.length,\n  allTasksCompleted: true\n};"
+            },
+            "id": "184b9d97-dd64-4eeb-8834-f2387889f691",
+            "name": "Prepare Final Results",
+            "type": "n8n-nodes-base.code",
+            "position": [
+                208,
+                672
+            ],
+            "typeVersion": 2
+        },
+        {
+            "parameters": {
+                "hasOutputParser": true,
+                "options": {
+                    "systemMessage": "You are a Response Synthesis AI Agent. Your role is to take all completed task results and create a comprehensive, coherent final response for the user.\n\nYou will receive an array of task results, each containing:\n- task_description: what the task accomplished\n- task_input: the input parameters used\n- task_tool: the tool that was used\n- task_output: the actual result/output\n- task_status: success/failure status\n- task_id: unique identifier\n\nYour job is to:\n1. Analyze all task results\n2. Synthesize the outputs into a coherent response\n3. Present the information in a user-friendly way\n4. Highlight key findings, results, or outcomes\n5. If there were any failed tasks, mention them appropriately\n\nReturn ONLY valid JSON with this exact structure:\n{\n  \"final_response\": \"A comprehensive, user-friendly response that synthesizes all task results into a coherent answer to the original user request\",\n  \"task_summary\": {\n    \"total_tasks\": 5,\n    \"successful_tasks\": 4,\n    \"failed_tasks\": 1\n  },\n  \"key_results\": [\n    \"Important finding 1\",\n    \"Important finding 2\"\n  ]\n}\n\nDO NOT include any other text, explanations, or markdown formatting."
+                }
+            },
+            "id": "ca00094a-f75c-4924-9062-a2b2f6c4905e",
+            "name": "Response Synthesis Agent",
+            "type": "@n8n/n8n-nodes-langchain.agent",
+            "position": [
+                528,
+                272
+            ],
+            "typeVersion": 2.2
+        },
+        {
+            "parameters": {
+                "schemaType": "manual",
+                "inputSchema": "{\n  \"$schema\": \"http://json-schema.org/draft-07/schema#\",\n  \"type\": \"object\",\n  \"properties\": {\n    \"final_response\": {\"type\": \"string\"},\n    \"task_summary\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"total_tasks\": {\"type\": \"number\"},\n        \"successful_tasks\": {\"type\": \"number\"},\n        \"failed_tasks\": {\"type\": \"number\"}\n      }\n    },\n    \"key_results\": {\n      \"type\": \"array\",\n      \"items\": {\"type\": \"string\"}\n    }\n  },\n  \"required\": [\"final_response\", \"task_summary\"]\n}"
+            },
+            "id": "e352af08-1ad4-4886-908f-28d8a563b66c",
+            "name": "Final Response Parser",
+            "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+            "position": [
+                672,
+                512
+            ],
+            "typeVersion": 1.3
+        },
+        {
+            "parameters": {
+                "model": "Qwen2.5:latest",
+                "options": {}
+            },
+            "id": "839ee019-9518-4874-8d58-f6feb5ffa262",
+            "name": "Qwen2.5 Response Synthesis",
+            "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+            "position": [
+                544,
+                512
+            ],
+            "typeVersion": 1,
+            "credentials": {
+                "ollamaApi": {
+                    "id": "KLoaICSBpFR345xi",
+                    "name": "host.docker.internal"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "message": "={{ $json.output.final_response }}\n\n**Task Summary:**\n- Total Tasks: {{ $json.output.task_summary.total_tasks }}\n- Successful: {{ $json.output.task_summary.successful_tasks }}\n- Failed: {{ $json.output.task_summary.failed_tasks || 0 }}\n\n{{ $json.output.key_results && $json.output.key_results.length > 0 ? '**Key Results:**\\n' + $json.output.key_results.map(result => '• ' + result).join('\\n') : '' }}",
+                "waitUserReply": false,
+                "options": {}
+            },
+            "id": "d083b841-5804-42b9-80c6-73a7ed2092ac",
+            "name": "Respond to Chat",
+            "type": "@n8n/n8n-nodes-langchain.chat",
+            "position": [
+                880,
+                272
+            ],
+            "typeVersion": 1
+        },
+        {
+            "parameters": {
+                "path": "task-executor-mcp-endpoint"
+            },
+            "id": "40138871-7557-4fd2-8d51-318236c89345",
+            "name": "MCP Server Executor",
+            "type": "@n8n/n8n-nodes-langchain.mcpTrigger",
+            "position": [
+                -1344,
+                816
+            ],
+            "webhookId": "task-executor-mcp-endpoint",
+            "typeVersion": 2
+        },
+        {
+            "parameters": {
+                "description": "Get list of all available MCP tools for task planning",
+                "workflowId": {
+                    "__rl": true,
+                    "mode": "list",
+                    "value": "aVdyMV0AxIk92VwD",
+                    "cachedResultUrl": "/workflow/aVdyMV0AxIk92VwD",
+                    "cachedResultName": "list-tool-service-trigger"
+                },
+                "workflowInputs": {
+                    "value": {},
+                    "mappingMode": "defineBelow"
+                }
+            },
+            "id": "bd2415ed-972a-4a7d-974b-715739df396a",
+            "name": "List Available Tools",
+            "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+            "position": [
+                -1872,
+                784
+            ],
+            "typeVersion": 2.2
+        },
+        {
+            "parameters": {
+                "endpointUrl": "http://host.docker.internal:6789/mcp",
+                "options": {}
+            },
+            "type": "@n8n/n8n-nodes-langchain.mcpClientTool",
+            "typeVersion": 1.2,
+            "position": [
+                -1824,
+                608
+            ],
+            "id": "8f20fa11-e2ca-4a43-9004-fcdbbc6a3cea",
+            "name": "MCP Client"
+        },
+        {
+            "parameters": {
+                "description": "Format final JSON response for task execution results",
+                "workflowId": {
+                    "__rl": true,
+                    "mode": "manual",
+                    "value": "format-json-response-trigger"
+                },
+                "workflowInputs": {
+                    "value": {
+                        "task_description": "={{ $parameter.task_description }}",
+                        "task_input": "={{ $parameter.task_input }}",
+                        "task_tool": "={{ $parameter.task_tool }}",
+                        "task_output": "={{ $parameter.task_output }}",
+                        "task_status": "={{ $parameter.task_status }}",
+                        "task_id": "={{ $parameter.task_id }}"
+                    },
+                    "mappingMode": "defineBelow"
+                }
+            },
+            "id": "8472c381-6af9-4837-8cbe-ac21b1f12ad2",
+            "name": "Format Final JSON Response",
+            "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+            "position": [
+                -624,
+                672
+            ],
+            "typeVersion": 2.2
+        }
+    ],
+    "pinData": {},
+    "connections": {
+        "When chat message received": {
+            "main": [
+                [
+                    {
+                        "node": "Task Planner Agent",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Task Planner Agent": {
+            "main": [
+                [
+                    {
+                        "node": "Task Dependency Resolver",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Task List Parser": {
+            "ai_outputParser": [
+                [
+                    {
+                        "node": "Task Planner Agent",
+                        "type": "ai_outputParser",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Qwen2.5 Task Planner": {
+            "ai_languageModel": [
+                [
+                    {
+                        "node": "Task Planner Agent",
+                        "type": "ai_languageModel",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Task Dependency Resolver": {
+            "main": [
+                [
+                    {
+                        "node": "Check Ready Tasks",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Check Ready Tasks": {
+            "main": [
+                [
+                    {
+                        "node": "Process Ready Task",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Prepare Final Results",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Process Ready Task": {
+            "main": [
+                [
+                    {
+                        "node": "Task Executor Agent",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Merge Task Results",
+                        "type": "main",
+                        "index": 1
+                    }
+                ]
+            ]
+        },
+        "Task Executor Agent": {
+            "main": [
+                [
+                    {
+                        "node": "Merge Task Results",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Merge Task Results": {
+            "main": [
+                [
+                    {
+                        "node": "Update Task Registry",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "MCP Client Executor": {
+            "ai_tool": [
+                [
+                    {
+                        "node": "Task Executor Agent",
+                        "type": "ai_tool",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Task Result Parser": {
+            "ai_outputParser": [
+                [
+                    {
+                        "node": "Task Executor Agent",
+                        "type": "ai_outputParser",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Qwen2.5 Task Executor": {
+            "ai_languageModel": [
+                [
+                    {
+                        "node": "Task Executor Agent",
+                        "type": "ai_languageModel",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Update Task Registry": {
+            "main": [
+                [
+                    {
+                        "node": "Check More Tasks",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Check More Tasks": {
+            "main": [
+                [
+                    {
+                        "node": "Check Ready Tasks",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Prepare Final Results",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Prepare Final Results": {
+            "main": [
+                [
+                    {
+                        "node": "Response Synthesis Agent",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Response Synthesis Agent": {
+            "main": [
+                [
+                    {
+                        "node": "Respond to Chat",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Final Response Parser": {
+            "ai_outputParser": [
+                [
+                    {
+                        "node": "Response Synthesis Agent",
+                        "type": "ai_outputParser",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Qwen2.5 Response Synthesis": {
+            "ai_languageModel": [
+                [
+                    {
+                        "node": "Response Synthesis Agent",
+                        "type": "ai_languageModel",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "MCP Client": {
+            "ai_tool": [
+                [
+                    {
+                        "node": "Task Planner Agent",
+                        "type": "ai_tool",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "active": false,
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "versionId": "9efccc62-ef98-487b-82ff-1f6b53e6e627",
+    "meta": {
+        "instanceId": "45c417bac78415cc82936bcd15e18b8c6e14faf1263d26de9f0ef5352823a723"
+    },
+    "id": "9W6JbgefZiGi1Ok5",
+    "tags": []
+}

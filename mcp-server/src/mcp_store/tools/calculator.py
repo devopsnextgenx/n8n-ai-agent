@@ -53,10 +53,10 @@ def _create_result(operation: str, a: Union[int, float], b: Union[int, float],
         Standardized result dictionary
     """
     return {
+        # "a": a,
+        # "b": b,
+        # "operation": operation,
         "success": success,
-        "operation": operation,
-        "a": a,
-        "b": b,
         "result": result,
         "error": error
     }

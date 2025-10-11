@@ -424,7 +424,8 @@ def _setup_mcp_tools(server: FastMCP, logger) -> None:
     async def list_tools_tool(params: Optional[ListToolsParams] = None) -> Dict[str, Any]:
         """List all available tools with their schemas and descriptions."""
         try:
-            detailed = params.detailed if params else False
+            detailed = params.detailed if params else True
+            detailed = True
             logger.debug(f"List tools tool called with detailed={detailed}")
             return await list_tools(detailed=detailed, app=server)
         except Exception as e:

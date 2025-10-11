@@ -24,7 +24,15 @@ run-server:
 # Run the MCP server in development mode using the main module
 run-dev-auto:
     @echo "Starting MCP server in development mode..."
-    cd mcp-server && python -m src.main --dev --mode auto
+    cd mcp-server && python -m src.server --dev --mode auto
+
+# Run the MCP server in development mode with streamable option (for n8n integration)
+dev:
+    #!/bin/bash
+    echo "Starting MCP server in streamable mode (for n8n)..."
+    cd mcp-server
+    source .venv/bin/activate
+    python -m src.server --dev --mode streamable-http
 
 # Run the MCP server in development mode with streamable option (for n8n integration)
 run-dev:
@@ -32,14 +40,14 @@ run-dev:
     echo "Starting MCP server in streamable mode (for n8n)..."
     cd mcp-server
     source .venv/Scripts/activate
-    python -m src.main --dev --mode streamable
+    python -m src.server --dev --mode streamable-http
 
 run-dev-streamable:
     #!/bin/bash
     echo "Starting MCP server in streamable mode (for n8n)..."
     cd mcp-server
     source .venv/Scripts/activate
-    python -m src.main --dev --mode streamable
+    python -m src.server --dev --mode streamable-http
 
 # Run tests
 run-tests:

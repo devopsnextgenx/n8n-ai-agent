@@ -10,8 +10,8 @@
       "name": "Task Result Parser",
       "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
       "position": [
-        608,
-        288
+        400,
+        256
       ],
       "typeVersion": 1.3
     },
@@ -29,8 +29,8 @@
       "name": "MCP Available Tools Client",
       "type": "@n8n/n8n-nodes-langchain.mcpClientTool",
       "position": [
-        416,
-        288
+        224,
+        256
       ],
       "typeVersion": 1.1
     },
@@ -43,8 +43,8 @@
       "name": "Process Ready Task",
       "type": "n8n-nodes-base.code",
       "position": [
-        32,
-        64
+        96,
+        -240
       ],
       "typeVersion": 2
     },
@@ -54,8 +54,8 @@
       "name": "Merge Task Results",
       "type": "n8n-nodes-base.merge",
       "position": [
-        784,
-        224
+        576,
+        -96
       ],
       "typeVersion": 3
     },
@@ -67,8 +67,8 @@
       "name": "Update Task Registry",
       "type": "n8n-nodes-base.code",
       "position": [
-        992,
-        64
+        896,
+        -96
       ],
       "typeVersion": 2
     },
@@ -100,8 +100,8 @@
       "name": "Check More Tasks",
       "type": "n8n-nodes-base.if",
       "position": [
-        1200,
-        -192
+        1184,
+        256
       ],
       "typeVersion": 2
     },
@@ -132,8 +132,8 @@
       "name": "Task Executor Agent",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "position": [
-        400,
-        64
+        128,
+        48
       ],
       "typeVersion": 2.2
     },
@@ -233,8 +233,8 @@
       "name": "qwen3",
       "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
       "position": [
-        256,
-        288
+        -16,
+        256
       ],
       "typeVersion": 1,
       "credentials": {
@@ -535,7 +535,7 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "2ef758c8-4001-4898-a676-8619e69ac17f",
+  "versionId": "b4975c9f-060e-434b-8c78-b5a1f58a0172",
   "meta": {
     "instanceId": "da3a9c976fa04718d7c8e4d3120e91256531306773cca999fd545bae2261f29b"
   },

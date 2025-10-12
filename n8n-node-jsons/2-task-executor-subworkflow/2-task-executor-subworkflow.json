@@ -36,26 +36,6 @@
     },
     {
       "parameters": {
-        "model": "Qwen2.5:latest",
-        "options": {}
-      },
-      "id": "f34a42ae-da0a-430c-b43e-c88a0f389ede",
-      "name": "Qwen2.5 Response Synthesis",
-      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
-      "position": [
-        2112,
-        -16
-      ],
-      "typeVersion": 1,
-      "credentials": {
-        "ollamaApi": {
-          "id": "USclDUsNN9z5K0Bb",
-          "name": "Ollama account"
-        }
-      }
-    },
-    {
-      "parameters": {
         "mode": "runOnceForEachItem",
         "jsCode": "// Extract ready tasks and create individual items for processing\nconst data = $input.item.json;\nconst readyTasks = data.readyTasks || [];\n\nif (readyTasks.length === 0) {\n  // No ready tasks, return the original data for final processing\n  return data;\n}\n\n// Get the first ready task to process\nconst currentTask = readyTasks[0];\n\n// Return the task data along with the original registry information\nreturn {\n  ...currentTask,\n  originalData: data\n};"
       },
@@ -81,7 +61,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Update task registry with completed task result\nconst taskResult = $input.first().json.output || $input.first().json;\nconst executedTask = $input.last().json;\n\n// Get the original data (task registry info) from the merged inputs\nconst originalData = executedTask.originalData;\n\n// Clone task registry and task tracking arrays\nconst taskRegistry = { ...originalData.taskRegistry };\nconst completedTasks = [...originalData.completedTasks];\nconst pendingTasks = [...originalData.pendingTasks];\n\n// ✅ Mark current task as completed\nif (taskRegistry[taskResult.task_id]) {\n  taskRegistry[taskResult.task_id].status = taskResult.task_status;\n  taskRegistry[taskResult.task_id].output = taskResult.task_output;\n\n  if (taskResult.task_status === 'success') {\n    if (!completedTasks.includes(taskResult.task_id)) {\n      completedTasks.push(taskResult.task_id);\n    }\n    // Remove from pending\n    const pendingIndex = pendingTasks.indexOf(taskResult.task_id);\n    if (pendingIndex > -1) {\n      pendingTasks.splice(pendingIndex, 1);\n    }\n  }\n}\n\n// ✅ Resolve dependency references in params\nfunction resolveParamRefs(params, taskRegistry) {\n  const resolved = {};\n\n  for (const [key, value] of Object.entries(params)) {\n    // Case 1: $ref object (e.g. { \"$ref\": \"#/tasks/0/results/sum\" })\n    if (typeof value === 'object' && value !== null && '$ref' in value) {\n      const ref = value.$ref;\n\n      // Example ref: \"#/tasks/0/results/sum\" or \"#/tasks/task_1/results\"\n      const match = ref.match(/tasks\\/(?:\\d+|([^/]+))\\/results?/);\n      const depTaskId = match && match[1] ? match[1] : null;\n\n      if (depTaskId && taskRegistry[depTaskId]) {\n        const depOutput = taskRegistry[depTaskId].output;\n        resolved[key] = depOutput?.result ?? depOutput;\n      } else {\n        resolved[key] = null;\n      }\n    }\n    // Case 2: Direct primitive (no ref)\n    else {\n      resolved[key] = value;\n    }\n  }\n\n  return resolved;\n}\n\n// ✅ Determine new ready tasks\nconst readyTasks = [];\nfor (const taskId of pendingTasks) {\n  const task = taskRegistry[taskId];\n  if (task.status === 'pending') {\n    const allDependenciesMet = task.dependencies.every(\n      depId =>\n        completedTasks.includes(depId) &&\n        taskRegistry[depId]?.status === 'success'\n    );\n\n    if (allDependenciesMet) {\n      // Deep copy to avoid mutating registry\n      const enrichedTask = JSON.parse(JSON.stringify(task));\n      enrichedTask.params = resolveParamRefs(enrichedTask.params, taskRegistry);\n      readyTasks.push(enrichedTask);\n    }\n  }\n}\n\n// ✅ Return updated pipeline state\nreturn {\n  taskRegistry,\n  pendingTasks,\n  completedTasks,\n  readyTasks,\n  currentBatch: (originalData.currentBatch || 0) + 1,\n  totalTasks: originalData.totalTasks,\n  lastTaskResult: taskResult\n};\n"
+        "jsCode": "// Update task registry with completed task result\nconst taskResult = $input.first().json.output || $input.first().json;\nconst executedTask = $input.last().json;\n\n// Get original task data\nconst originalData = executedTask.originalData;\n\n// Clone existing registry state\nconst taskRegistry = { ...originalData.taskRegistry };\nconst completedTasks = [...originalData.completedTasks];\nconst pendingTasks = [...originalData.pendingTasks];\n\n// ✅ Mark current task as completed\nif (taskRegistry[taskResult.task_id]) {\n  taskRegistry[taskResult.task_id].status = taskResult.task_status;\n  taskRegistry[taskResult.task_id].output = taskResult.task_output;\n\n  if (taskResult.task_status === \"success\") {\n    if (!completedTasks.includes(taskResult.task_id)) {\n      completedTasks.push(taskResult.task_id);\n    }\n    const pendingIndex = pendingTasks.indexOf(taskResult.task_id);\n    if (pendingIndex > -1) {\n      pendingTasks.splice(pendingIndex, 1);\n    }\n  }\n}\n\n// ✅ Resolve any $ref references in params\nfunction resolveParamRefs(params, taskRegistry) {\n  const resolved = {};\n\n  for (const [key, value] of Object.entries(params)) {\n    if (typeof value === \"object\" && value !== null && \"$ref\" in value) {\n      const ref = value.$ref;\n\n      // 🔍 Extract dependency ID or numeric index\n      // supports: \"#/tasks/0/results/sum\" or \"#/tasks/task_1/results\"\n      let depTaskId = null;\n      const pathParts = ref.split(\"/\").filter(Boolean);\n      const taskIndex = pathParts.findIndex(p => p === \"tasks\");\n\n      if (taskIndex !== -1 && pathParts.length > taskIndex + 1) {\n        const nextPart = pathParts[taskIndex + 1];\n        // If it's a number, map index → task_id from registry order\n        if (/^\\d+$/.test(nextPart)) {\n          const allTaskIds = Object.keys(taskRegistry);\n          depTaskId = allTaskIds[parseInt(nextPart, 10)];\n        } else {\n          depTaskId = nextPart;\n        }\n      }\n\n      if (depTaskId && taskRegistry[depTaskId]?.output) {\n        const depOutput = taskRegistry[depTaskId].output;\n        resolved[key] = depOutput?.result ?? depOutput;\n      } else {\n        resolved[key] = null;\n      }\n    } else {\n      resolved[key] = value;\n    }\n  }\n\n  return resolved;\n}\n\n// ✅ Find ready tasks (dependencies completed)\nconst readyTasks = [];\nfor (const taskId of pendingTasks) {\n  const task = taskRegistry[taskId];\n  if (task.status === \"pending\") {\n    const allDependenciesMet = task.dependencies.every(\n      depId =>\n        completedTasks.includes(depId) &&\n        taskRegistry[depId]?.status === \"success\"\n    );\n\n    if (allDependenciesMet) {\n      const enrichedTask = JSON.parse(JSON.stringify(task));\n      enrichedTask.params = resolveParamRefs(enrichedTask.params, taskRegistry);\n      readyTasks.push(enrichedTask);\n    }\n  }\n}\n\n// ✅ Return updated workflow state\nreturn {\n  taskRegistry,\n  pendingTasks,\n  completedTasks,\n  readyTasks,\n  currentBatch: (originalData.currentBatch || 0) + 1,\n  totalTasks: originalData.totalTasks,\n  lastTaskResult: taskResult\n};\n"
       },
       "id": "69981311-73e1-4645-adf6-803d5efb8521",
       "name": "Update Task Registry",
@@ -154,23 +134,6 @@
       "position": [
         400,
         64
-      ],
-      "typeVersion": 2.2
-    },
-    {
-      "parameters": {
-        "promptType": "define",
-        "text": "=User Request: {{ $json.chatInput.chatInput }}\n\nTask Execution Details: {{ JSON.stringify($json.taskResults) }}",
-        "options": {
-          "systemMessage": "You are a Response Synthesis AI Agent. Your role is to take all completed task results and create a comprehensive, coherent final response for the user.\n\nYou will receive an array of task results, each containing:\n- task_description: what the task accomplished\n- task_input: the input parameters used\n- task_tool: the tool that was used\n- task_output: the actual result/output\n- task_status: success/failure status\n- task_id: unique identifier\n\nYour job is to:\n1. Analyze all task results\n2. Synthesize the outputs into a coherent response\n3. Present the information in a user-friendly way\n4. Highlight key findings, results, or outcomes\n5. If there were any failed tasks, mention them appropriately\n\nPrepare final response summary."
-        }
-      },
-      "id": "d85ff6e5-7509-4401-a40d-2958b4fcfa50",
-      "name": "Response Synthesis Agent",
-      "type": "@n8n/n8n-nodes-langchain.agent",
-      "position": [
-        2112,
-        -240
       ],
       "typeVersion": 2.2
     },
@@ -442,13 +405,7 @@
     },
     "Code in JavaScript": {
       "main": [
-        [
-          {
-            "node": "Response Synthesis Agent",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     },
     "Merge Task Results": {
@@ -540,11 +497,6 @@
         ]
       ]
     },
-    "Response Synthesis Agent": {
-      "main": [
-        []
-      ]
-    },
     "Task Dependency Resolver": {
       "main": [
         [
@@ -567,17 +519,6 @@
         ]
       ]
     },
-    "Qwen2.5 Response Synthesis": {
-      "ai_languageModel": [
-        [
-          {
-            "node": "Response Synthesis Agent",
-            "type": "ai_languageModel",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "qwen3": {
       "ai_languageModel": [
         [
@@ -594,7 +535,7 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "835d4a74-b12b-4243-83f3-bf94725046b1",
+  "versionId": "2ef758c8-4001-4898-a676-8619e69ac17f",
   "meta": {
     "instanceId": "da3a9c976fa04718d7c8e4d3120e91256531306773cca999fd545bae2261f29b"
   },

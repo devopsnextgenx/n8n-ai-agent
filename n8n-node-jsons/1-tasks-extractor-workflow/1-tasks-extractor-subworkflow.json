@@ -226,7 +226,7 @@
       "name": "mistral",
       "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
       "position": [
-        144,
+        128,
         224
       ],
       "typeVersion": 1,
@@ -379,7 +379,7 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "b8d080e6-a706-4a56-9329-381955e60f97",
+  "versionId": "aa54ed73-b655-4c16-bfe4-0246fe1a8072",
   "meta": {
     "instanceId": "da3a9c976fa04718d7c8e4d3120e91256531306773cca999fd545bae2261f29b"
   },

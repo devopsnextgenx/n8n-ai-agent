@@ -317,7 +317,7 @@ def _setup_mcp_tools(server: FastMCP, logger) -> None:
             raise ValueError(f"Parameters must be an array of 2 numbers or an object with 'a' and 'b' properties. Got: {type(raw_params)}")
 
     # Script execution tool
-    # @server.tool(name="executeScript", description="Execute a script in the environment. Accepts a Python script as a string and runs it safely. Returns execution result or error.")
+    @server.tool(name="executeScript", description="Execute a script in the environment. Accepts a Python script as a string and runs it safely. Returns execution result or error.")
     @log_tool_calls
     async def execute_script(script: str) -> Dict[str, Any]:
         """Execute a Python script in the environment."""

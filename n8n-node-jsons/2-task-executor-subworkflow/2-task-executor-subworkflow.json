@@ -251,107 +251,107 @@
         "json": {
           "success": true,
           "chatInput": {
-            "sessionId": "c26a80ddbae849bf8a500db8975814d2",
             "action": "sendMessage",
-            "chatInput": "add 231 and 56, then multipley by 2, before returning encrypt in base64"
+            "chatInput": "add 231 and 56, then multipley by 2, before returning encrypt in base64",
+            "sessionId": "c26a80ddbae849bf8a500db8975814d2"
           },
           "task_plan": {
             "tasks": [
               {
-                "task_id": "task_1",
                 "tool": "add",
-                "task_description": "Add two numbers together: 231 and 56.",
                 "params": {
                   "a": 231,
                   "b": 56
                 },
-                "dependencies": []
+                "task_id": "task_1",
+                "dependencies": [],
+                "task_description": "Add two numbers together: 231 and 56."
               },
               {
-                "task_id": "task_2",
                 "tool": "multiply",
-                "task_description": "Multiply the sum of task_1 by 2.",
                 "params": {
                   "a": {
                     "$ref": "#/tasks/0/results/sum"
                   }
                 },
+                "task_id": "task_2",
                 "dependencies": [
                   "task_1"
-                ]
+                ],
+                "task_description": "Multiply the sum of task_1 by 2."
               },
               {
-                "task_id": "task_3",
                 "tool": "encrypt",
-                "task_description": "Encode the result of task_2 in base64 format.",
                 "params": {
                   "text": {
                     "$ref": "#/tasks/1/results"
                   }
                 },
+                "task_id": "task_3",
                 "dependencies": [
                   "task_2"
-                ]
+                ],
+                "task_description": "Encode the result of task_2 in base64 format."
               }
             ]
           },
           "validation": {
-            "tasks_count": 3,
-            "tools_used": [
-              "add",
-              "multiply",
-              "encrypt"
-            ],
-            "total_params": 4,
-            "has_dependencies": true,
             "warnings": [
               "Task task_1: Unknown parameter \"a\" (not in schema)",
               "Task task_1: Unknown parameter \"b\" (not in schema)",
               "Task task_2: Unknown parameter \"a\" (not in schema)",
               "Task task_3: Unknown parameter \"text\" (not in schema)"
             ],
+            "tools_used": [
+              "add",
+              "multiply",
+              "encrypt"
+            ],
+            "tasks_count": 3,
             "task_details": [
               {
-                "task_id": "task_1",
                 "tool": "add",
                 "status": "valid",
+                "task_id": "task_1",
                 "param_count": 2,
-                "required_params": [
-                  "params"
-                ],
                 "provided_params": [
                   "a",
                   "b"
                 ],
+                "required_params": [
+                  "params"
+                ],
                 "dependency_count": 0
               },
               {
-                "task_id": "task_2",
                 "tool": "multiply",
                 "status": "valid",
+                "task_id": "task_2",
                 "param_count": 1,
-                "required_params": [
-                  "params"
-                ],
                 "provided_params": [
                   "a"
+                ],
+                "required_params": [
+                  "params"
                 ],
                 "dependency_count": 1
               },
               {
-                "task_id": "task_3",
                 "tool": "encrypt",
                 "status": "valid",
+                "task_id": "task_3",
                 "param_count": 1,
-                "required_params": [
-                  "params"
-                ],
                 "provided_params": [
                   "text"
                 ],
+                "required_params": [
+                  "params"
+                ],
                 "dependency_count": 1
               }
-            ]
+            ],
+            "total_params": 4,
+            "has_dependencies": true
           }
         }
       }
@@ -380,6 +380,17 @@
           {
             "node": "Merge",
             "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "qwen3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Task Executor Agent",
+            "type": "ai_languageModel",
             "index": 0
           }
         ]
@@ -514,17 +525,6 @@
           {
             "node": "Task Executor Agent",
             "type": "ai_tool",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "qwen3": {
-      "ai_languageModel": [
-        [
-          {
-            "node": "Task Executor Agent",
-            "type": "ai_languageModel",
             "index": 0
           }
         ]

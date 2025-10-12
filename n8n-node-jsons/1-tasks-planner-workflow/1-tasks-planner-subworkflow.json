@@ -1,5 +1,5 @@
 {
-  "name": "tasks-extractor-subworkflow",
+  "name": "tasks-planner-subworkflow",
   "nodes": [
     {
       "parameters": {
@@ -379,7 +379,7 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "54e42136-e17f-413f-923a-18d126ef38a6",
+  "versionId": "d265c803-5e76-420c-93da-f9f9a1eb7c09",
   "meta": {
     "instanceId": "da3a9c976fa04718d7c8e4d3120e91256531306773cca999fd545bae2261f29b"
   },

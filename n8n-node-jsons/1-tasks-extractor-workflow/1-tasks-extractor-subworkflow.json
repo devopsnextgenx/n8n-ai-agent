@@ -187,7 +187,7 @@
         "text": "={{ $json.planning_prompt }}",
         "hasOutputParser": true,
         "options": {
-          "systemMessage": "You are an expert task planner. Create detailed, executable task plans with specific parameters. Never use placeholders - always extract or infer real values from the user's request.",
+          "systemMessage": "You are an expert task planner. Create detailed, executable task plans with specific parameters. \n- Never use placeholders - always extract or infer real values from the user's request.\n- For tasks which depend on previous task, Params can be given values from prvious task say with index xindex in tasks array as below,\n{\n   \"$ref\": \"#/tasks/xindex/results\"\n}",
           "maxIterations": 1
         }
       },
@@ -256,9 +256,9 @@
     "Start": [
       {
         "json": {
-          "sessionId": "c26a80ddbae849bf8a500db8975814d2",
           "action": "sendMessage",
-          "chatInput": "add two numbers 342 and 565"
+          "chatInput": "add two numbers 342 and 565",
+          "sessionId": "c26a80ddbae849bf8a500db8975814d2"
         }
       }
     ]
@@ -379,7 +379,7 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "aa54ed73-b655-4c16-bfe4-0246fe1a8072",
+  "versionId": "54e42136-e17f-413f-923a-18d126ef38a6",
   "meta": {
     "instanceId": "da3a9c976fa04718d7c8e4d3120e91256531306773cca999fd545bae2261f29b"
   },

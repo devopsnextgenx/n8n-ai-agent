@@ -106,3 +106,87 @@ mcp-session-id: {{MCPSESSIONID}}
         }
     }
 }
+
+###
+POST http://localhost:6789/mcp
+Content-Type: application/json
+Accept: application/json, text/event-stream
+mcp-session-id: {{MCPSESSIONID}}
+
+{
+    "jsonrpc": "2.0",
+    "id": 3,
+    "method": "tools/call",
+    "params": {
+        "name": "encrypt",
+        "arguments": {
+            "params": {
+                "text": {
+                    "sum": 574
+                }
+            }
+        }
+    }
+}
+
+
+
+
+###
+POST http://localhost:6789/mcp
+Content-Type: application/json
+Accept: application/json, text/event-stream
+mcp-session-id: {{MCPSESSIONID}}
+
+{
+    "jsonrpc": "2.0",
+    "id": 2,
+    "method": "resources/list",
+    "params": {}
+}
+
+
+###
+POST http://localhost:6789/mcp
+Content-Type: application/json
+Accept: application/json, text/event-stream
+mcp-session-id: {{MCPSESSIONID}}
+
+{
+    "jsonrpc": "2.0",
+    "id": 4,
+    "method": "resources/read",
+    "params": {
+        "uri": "resource://mcp/version"
+    }
+}
+
+###
+POST http://localhost:6789/mcp
+Content-Type: application/json
+Accept: application/json, text/event-stream
+mcp-session-id: {{MCPSESSIONID}}
+
+{
+    "jsonrpc": "2.0",
+    "id": 4,
+    "method": "resources/read",
+    "params": {
+        "uri": "resource://mcp/status"
+    }
+}
+
+###
+POST http://localhost:6789/mcp
+Content-Type: application/json
+Accept: application/json, text/event-stream
+mcp-session-id: {{MCPSESSIONID}}
+
+{
+    "jsonrpc": "2.0",
+    "id": 4,
+    "method": "resources/read",
+    "params": {
+        "uri": "resource://mcp/tools/list"
+    }
+}

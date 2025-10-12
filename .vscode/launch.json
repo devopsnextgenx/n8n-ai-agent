@@ -14,12 +14,17 @@
             "envFile": "${workspaceFolder}/.env"
         },
         {
-            "name": "Python: MCP Server",
+            "name": "Python: MCP Server (Streamable HTTP Dev)",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/mcp-server/n8n_mcp_server/main.py",
+            "module": "src.server",
+            "args": [
+                "--dev",
+                "--mode",
+                "streamable-http"
+            ],
             "console": "integratedTerminal",
-            "cwd": "${workspaceFolder}",
+            "cwd": "${workspaceFolder}/mcp-server",
             "env": {
                 "PYTHONPATH": "${workspaceFolder}/mcp-server"
             },
@@ -48,7 +53,8 @@
             "request": "launch",
             "module": "uvicorn",
             "args": [
-                "n8n_mcp_server.main:app",
+                "src.fastapi_server:create_fastapi_server",
+                "--factory",
                 "--reload",
                 "--host",
                 "0.0.0.0",
@@ -60,7 +66,8 @@
             "env": {
                 "PYTHONPATH": "${workspaceFolder}/mcp-server"
             },
-            "envFile": "${workspaceFolder}/.env"
+            "envFile": "${workspaceFolder}/.env",
+            "justMyCode": false
         }
     ]
 }

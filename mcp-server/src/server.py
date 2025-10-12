@@ -16,7 +16,7 @@ from typing import Any, Awaitable, Callable, Dict, Optional
 
 import mcp
 from fastmcp import FastMCP
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 # Load environment variables from .env file if it exists
 try:
@@ -126,13 +126,29 @@ def validate_config(config) -> bool:
 class EncryptParams(BaseModel):
     """Parameters for the encrypt tool that converts text to base64 encoding."""
     
-    text: str = Field(
+    text: Any = Field(
         ...,
-        description="The plain text string to encode to base64. Can contain any Unicode characters.",
-        min_length=1,
-        max_length=10000,
-        examples=["Hello World", "This is a secret message", "amitkshirsagar"]
+        description="The plain text string to encode to base64. Can contain any Unicode characters, numbers, or other types that will be converted to string.",
+        examples=["Hello World", "This is a secret message", "amitkshirsagar", 123, 574]
     )
+    
+    @model_validator(mode='before')
+    @classmethod
+    def convert_text_to_string(cls, values):
+        """Convert text field to string before validation."""
+        if isinstance(values, dict) and 'text' in values:
+            values['text'] = str(values['text'])
+        return values
+    
+    @field_validator('text', mode='after')
+    @classmethod
+    def validate_text_string(cls, v):
+        """Ensure text is a non-empty string."""
+        if not v or len(v) == 0:
+            raise ValueError("text cannot be empty")
+        if len(v) > 10000:
+            raise ValueError("text cannot exceed 10000 characters")
+        return v
     
     class Config:
         json_schema_extra = {
@@ -141,10 +157,11 @@ class EncryptParams(BaseModel):
             "examples": [
                 {"text": "Hello World"},
                 {"text": "This is a secret message"},
-                {"text": "amitkshirsagar"}
+                {"text": "amitkshirsagar"},
+                {"text": 123},
+                {"text": 574}
             ]
         }
-
 
 class DecryptParams(BaseModel):
     """Parameters for the decrypt tool that converts base64 back to original text."""

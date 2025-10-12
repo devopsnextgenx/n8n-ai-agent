@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  mcp-server:
+    build: .
+    image: amitkshirsagar13/n8n-mcp-server:latest
+    ports:
+      - "6789:6789"  # Main MCP server (server.py)
+    environment:
+      - MCP_HOST=0.0.0.0
+      - MCP_PORT=6789
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./logs:/app/logs
+      - ./config.yml:/app/config.yml:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6789/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - mcp-network
+
+  fastapi-server:
+    build: .
+    image: amitkshirsagar13/n8n-mcp-server:latest
+    ports:
+      - "6790:6790"  # FastAPI server (fastapi_server.py)
+    environment:
+      - MCP_HOST=0.0.0.0
+      - MCP_PORT=6790
+      - LOG_LEVEL=INFO
+      - SERVER_TYPE=fastapi
+    volumes:
+      - ./logs:/app/logs
+      - ./config.yml:/app/config.yml:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6790/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - mcp-network
+
+networks:
+  mcp-network:
+    driver: bridge
+
+volumes:
+  logs:
+    driver: local

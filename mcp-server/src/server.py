@@ -726,9 +726,16 @@ def main():
         # Override configuration with command line arguments if provided
         if args.host:
             config.server.host = args.host
-            
+
         if args.port:
             config.server.port = args.port
+
+        # Override with environment variables if set
+        if os.getenv("MCP_HOST"):
+            config.server.host = os.getenv("MCP_HOST")
+
+        if os.getenv("MCP_PORT"):
+            config.server.port = int(os.getenv("MCP_PORT"))
             
         # Setup logging
         logger = setup_logging(config.logging)

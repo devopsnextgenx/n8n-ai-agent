@@ -5,9 +5,11 @@ This provides a working HTTP server with the same functionality as the FastMCP v
 """
 
 import asyncio
+import os
 import sys
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any, Dict
+
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
@@ -16,15 +18,20 @@ src_path = Path(__file__).parent
 if str(src_path) not in sys.path:
     sys.path.insert(0, str(src_path))
 
-from config import get_config
-from utils import get_logger
-from src.mcp_store.tools.crypto import encrypt_tool, decrypt_tool
-from mcp_store.tools.calculator import (
-    add_tool, subtract_tool, multiply_tool, divide_tool, modulo_tool
-)
-from mcp_store.resources.version import get_version_resource
 from mcp_store.resources.status import get_status_resource
 from mcp_store.resources.tools_list import get_tools_list_resource
+from mcp_store.resources.version import get_version_resource
+from mcp_store.tools.calculator import (
+    add_tool,
+    divide_tool,
+    modulo_tool,
+    multiply_tool,
+    subtract_tool,
+)
+from utils import get_logger
+
+from config import get_config
+from src.mcp_store.tools.crypto import decrypt_tool, encrypt_tool
 
 logger = get_logger(__name__)
 
@@ -198,6 +205,13 @@ async def run_server():
     try:
         config = get_config()
         
+        # Override with environment variables if set
+        if os.getenv("MCP_HOST"):
+            config.server.host = os.getenv("MCP_HOST")
+
+        if os.getenv("MCP_PORT"):
+            config.server.port = int(os.getenv("MCP_PORT"))
+            
         logger.info("Creating FastAPI-based MCP server...")
         app = create_fastapi_server()
         

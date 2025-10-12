@@ -5,26 +5,26 @@
       "parameters": {
         "jsCode": "// Extract the task plan JSON from the agent's response\nconst agentOutput = $input.item.json.output;\n\nlet taskPlan;\n\n// Try to parse if it's a string\nif (typeof agentOutput === 'string') {\n  // Look for JSON object in the response\n  const jsonMatch = agentOutput.match(/\\{[\\s\\S]*\\}/);\n  if (jsonMatch) {\n    taskPlan = JSON.parse(jsonMatch[0]);\n  } else {\n    throw new Error('No valid JSON found in agent response');\n  }\n} else if (typeof agentOutput === 'object') {\n  taskPlan = agentOutput;\n} else {\n  throw new Error('Unexpected agent output format');\n}\n\n// Validate the structure\nif (!taskPlan.tasks || !Array.isArray(taskPlan.tasks)) {\n  throw new Error('Invalid task plan structure - missing tasks array');\n}\n\n// Ensure all required fields are present\nfor (const task of taskPlan.tasks) {\n  if (!task.tool || !task.task_description || !task.task_input || !task.task_id) {\n    throw new Error(`Invalid task structure: ${JSON.stringify(task)}`);\n  }\n  // Ensure dependencies exists (default to empty array)\n  if (!task.dependencies) {\n    task.dependencies = [];\n  }\n}\n\nreturn taskPlan;"
       },
-      "id": "153fb849-d328-4971-a702-25e801f7088e",
+      "id": "f24a3973-9c13-4c78-a991-b2ed69e14f42",
       "name": "Parse Task Plan JSON",
       "type": "n8n-nodes-base.code",
       "position": [
-        -1376,
-        864
+        -560,
+        784
       ],
       "typeVersion": 2
     },
     {
       "parameters": {
         "schemaType": "manual",
-        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"tasks\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"tool\": {\n            \"type\": \"string\"\n          },\n          \"task_description\": {\n            \"type\": \"string\"\n          },\n          \"task_input\": {\n            \"type\": \"object\",\n            \"additionalProperties\": true\n          },\n          \"dependencies\": {\n            \"type\": \"array\",\n            \"items\": {\n              \"type\": \"string\"\n            },\n            \"default\": []\n          },\n          \"task_id\": {\n            \"type\": \"string\"\n          }\n        },\n        \"required\": [\"tool\", \"task_description\", \"task_input\", \"task_id\"],\n        \"additionalProperties\": false\n      }\n    }\n  },\n  \"required\": [\"tasks\"],\n  \"additionalProperties\": false\n}"
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"tasks\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"tool\": {\n            \"type\": \"string\"\n          },\n          \"task_description\": {\n            \"type\": \"string\"\n          },\n          \"query\": {\n            \"type\": \"object\",\n            \"additionalProperties\": true\n          },\n          \"dependencies\": {\n            \"type\": \"array\",\n            \"items\": {\n              \"type\": \"string\"\n            },\n            \"default\": []\n          },\n          \"task_id\": {\n            \"type\": \"string\"\n          }\n        },\n        \"required\": [\"tool\", \"task_description\", \"query\", \"task_id\"],\n        \"additionalProperties\": false\n      }\n    }\n  },\n  \"required\": [\"tasks\"],\n  \"additionalProperties\": false\n}"
       },
-      "id": "c0f7defc-5a35-4671-bb05-211db09d6cc0",
+      "id": "1e9a405b-edd0-40d0-b0cd-ff34ac6e7a35",
       "name": "Task List Parser",
       "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
       "position": [
-        -1696,
-        752
+        -880,
+        672
       ],
       "typeVersion": 1.3
     },
@@ -33,12 +33,12 @@
         "mode": "runOnceForEachItem",
         "jsCode": "// Extract tasks and prepare for dependency resolution\nconst tasks = $input.item.json.output.tasks;\n\n// Create a task registry with status tracking\nconst taskRegistry = {};\nconst pendingTasks = [];\nconst completedTasks = [];\n\n// Initialize all tasks\nfor (const task of tasks) {\n  taskRegistry[task.task_id] = {\n    ...task,\n    status: 'pending',\n    output: null,\n    dependencies: task.dependencies || []\n  };\n  pendingTasks.push(task.task_id);\n}\n\n// Find tasks that can be executed immediately (no dependencies)\nconst readyTasks = [];\nfor (const taskId of pendingTasks) {\n  const task = taskRegistry[taskId];\n  if (task.dependencies.length === 0) {\n    readyTasks.push(task);\n  }\n}\n\nreturn {\n  taskRegistry,\n  pendingTasks,\n  completedTasks,\n  readyTasks,\n  currentBatch: 0,\n  totalTasks: tasks.length\n};"
       },
-      "id": "84654290-8e86-4c91-b929-30406ae517f6",
+      "id": "ea864495-dc3b-4185-ba80-f9c1fd6a1f68",
       "name": "Task Dependency Resolver",
       "type": "n8n-nodes-base.code",
       "position": [
-        -1520,
-        432
+        -704,
+        352
       ],
       "typeVersion": 2
     },
@@ -46,11 +46,11 @@
       "parameters": {
         "conditions": {
           "options": {
-            "leftValue": "",
             "caseSensitive": true,
-            "typeValidation": "strict"
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
           },
-          "combinator": "and",
           "conditions": [
             {
               "id": "task-execution-condition",
@@ -61,16 +61,17 @@
               "leftValue": "={{ $json.readyTasks.length }}",
               "rightValue": 0
             }
-          ]
+          ],
+          "combinator": "and"
         },
         "options": {}
       },
-      "id": "7b693a06-edb0-45d6-8c99-99119a7ab06c",
+      "id": "76a46ba6-5508-46a3-b821-1adaceab688d",
       "name": "Check Ready Tasks",
       "type": "n8n-nodes-base.if",
       "position": [
-        -1328,
-        432
+        -512,
+        352
       ],
       "typeVersion": 2
     },
@@ -79,44 +80,44 @@
         "mode": "runOnceForEachItem",
         "jsCode": "// Extract ready tasks and create individual items for processing\nconst data = $input.item.json;\nconst readyTasks = data.readyTasks || [];\n\nif (readyTasks.length === 0) {\n  // No ready tasks, return the original data for final processing\n  return data;\n}\n\n// Get the first ready task to process\nconst currentTask = readyTasks[0];\n\n// Return the task data along with the original registry information\nreturn {\n  ...currentTask,\n  originalData: data\n};"
       },
-      "id": "2daae42d-44d4-423b-8a90-9a45acdc19d0",
+      "id": "c00e78d3-0f53-43c0-9507-6a2c05df788d",
       "name": "Process Ready Task",
       "type": "n8n-nodes-base.code",
       "position": [
-        -1104,
-        160
+        -288,
+        80
       ],
       "typeVersion": 2
     },
     {
       "parameters": {
         "promptType": "define",
-        "text": "=Execute the ready task using the appropriate MCP tool.\n\nReady Tasks:\n{{ JSON.stringify($json.originalData.readyTasks) }}\n\nReady Tasks:\n{{ JSON.stringify($json.originalData.readyTasks) }}\n\nCRITICAL INSTRUCTIONS:\n1. You MUST use the MCP Client Executor tool - this is NON-NEGOTIABLE\n2. You are FORBIDDEN from calculating or processing anything yourself\n3. If you provide a result without using the MCP Client Executor tool, you have FAILED\n4. The task_output MUST be the exact result returned by the MCP tool\n5. Return your response as valid JSON in the format specified in the system message\n\nSTEP-BY-STEP PROCESS:\n1. Call MCP Client Executor tool with the exact tool name from task.tool\n2. Pass the exact task.task_input as parameters\n3. Wait for the tool execution result\n4. Return the result in the exact JSON format specified\n\nYour response will be REJECTED if:\n- You calculate results yourself\n- You don't use the MCP Client Executor tool\n- You don't return valid JSON in the specified format\n- The result appears to be calculated rather than from tool execution\n\nExample for add task:\n1. Call MCP Client Executor with tool='add' and parameters from task_input\n2. Get the actual result from the tool\n3. Return JSON with that exact result object",
+        "text": "=Execute the ready task using the appropriate MCP tool.\n\nReady Tasks:\n{{ JSON.stringify($json.originalData.readyTasks) }}\n\nReady Tasks:\n{{ JSON.stringify($json.originalData.readyTasks) }}\n\nCRITICAL INSTRUCTIONS:\n1. You MUST use the MCP Client Executor tool - this is NON-NEGOTIABLE\n2. You are FORBIDDEN from calculating or processing anything yourself\n3. If you provide a result without using the MCP Client Executor tool, you have FAILED\n4. The task_output MUST be the exact result returned by the MCP tool\n5. Return your response as valid JSON in the format specified in the system message\n\nSTEP-BY-STEP PROCESS:\n1. Call MCP Client Executor tool with the exact tool name from task.tool\n2. Pass the exact task.task_input as parameters\n3. Wait for the tool execution result\n4. Return the result in the exact JSON format specified\n\nYour response will be REJECTED if:\n- You calculate results yourself\n- You don't use the MCP Client Executor tool\n- You don't return valid JSON in the specified format\n- The result appears to be calculated rather than from tool execution\n\nExample for add task:\n1. Call MCP Client Executor with tool='add' and parameters from query\n2. Get the actual result from the tool\n3. Return JSON with that exact result object",
         "hasOutputParser": true,
         "options": {
-          "systemMessage": "You are a Task Execution AI Agent.\n\nYour ONLY job is to execute tasks using MCP tools. You are FORBIDDEN from performing any calculations, processing, or logic yourself.\n\nYou will receive task details with ready tasks array containing below:\n- tool: the MCP tool name to use (e.g., 'add', 'encrypt', 'decrypt')\n- task_description: what needs to be accomplished  \n- task_input: parameters for the tool\n- task_id: unique identifier\n\nMANDATORY EXECUTION STEPS (NO EXCEPTIONS):\n1. ALWAYS start by using the MCP Client Executor tool\n2. Call the exact tool specified in task.tool property\n3. Pass the exact task.task_input as parameters to the tool\n4. Wait for the actual tool execution result\n5. Use the result EXACTLY as returned by the tool\n6. Return the result in the exact format specified below\n\nFORBIDDEN ACTIONS:\n- NEVER calculate or process anything yourself\n- NEVER provide results without using tools\n- NEVER assume what the result should be\n- NEVER shortcut the tool execution process\n- NEVER use your own knowledge to provide answers\n\nVALIDATION REQUIREMENTS:\n- Every response MUST include evidence of actual tool usage\n- The task_output MUST be the exact result from the MCP tool\n- If you cannot use the tool, report \"failure\" status with error details\n\nRETURN FORMAT (MUST be valid JSON):\n{\n  \"task_description\": \"[copy original task_description]\",\n  \"task_input\": {[copy original task_input object]},\n  \"task_tool\": \"[tool name that was used]\",\n  \"task_output\": {[EXACT result object from MCP tool - NOT your calculation]},\n  \"task_status\": \"success\",\n  \"task_id\": \"[copy original task_id]\"\n}\n\nCRITICAL: You MUST return valid JSON in the exact format above. Do not use any other formatting.\n\nREMEMBER: If you provide any result without actually using the MCP Client Executor tool, you have FAILED your purpose."
+          "systemMessage": "You are a Task Execution AI Agent.\n\nYour ONLY job is to execute tasks using MCP tools. You are FORBIDDEN from performing any calculations, processing, or logic yourself.\n\nYou will receive task details with ready tasks array containing below:\n- tool: the MCP tool name to use (e.g., 'add', 'encrypt', 'decrypt')\n- task_description: what needs to be accomplished  \n- query: parameters for the tool\n- task_id: unique identifier\n\nMANDATORY EXECUTION STEPS (NO EXCEPTIONS):\n1. ALWAYS start by using the MCP Client Executor tool\n2. Call the exact tool specified in task.tool property\n3. Pass the exact task.task_input as parameters to the tool\n4. Wait for the actual tool execution result\n5. Use the result EXACTLY as returned by the tool\n6. Return the result in the exact format specified below\n\nFORBIDDEN ACTIONS:\n- NEVER calculate or process anything yourself\n- NEVER provide results without using tools\n- NEVER assume what the result should be\n- NEVER shortcut the tool execution process\n- NEVER use your own knowledge to provide answers\n\nVALIDATION REQUIREMENTS:\n- Every response MUST include evidence of actual tool usage\n- The task_output MUST be the exact result from the MCP tool\n- If you cannot use the tool, report \"failure\" status with error details\n- Make sure you analyze all AI tool response at end of request, and only consider Last AI Tool response, as that is what matters most.\n\nRETURN FORMAT (MUST be valid JSON):\n{\n  \"task_description\": \"[copy original task_description]\",\n  \"query\": {[copy original query object]},\n  \"task_tool\": \"[tool name that was used]\",\n  \"task_output\": {[EXACT result object from MCP tool - NOT your calculation]},\n  \"task_status\": \"success\",\n  \"task_id\": \"[copy original task_id]\"\n}\n\nCRITICAL: You MUST return valid JSON in the exact format above. Do not use any other formatting.\n\nREMEMBER: If you provide any result without actually using the MCP Client Executor tool, you have FAILED your purpose."
         }
       },
-      "id": "db7756ab-21d7-4a28-a913-afd8b7e098c2",
+      "id": "dc494b11-034e-4982-bc3c-ef25a8ee0e59",
       "name": "Task Executor Agent",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "position": [
-        -816,
-        80
+        0,
+        0
       ],
       "typeVersion": 2.2
     },
     {
       "parameters": {
         "schemaType": "manual",
-        "inputSchema": "{\n  \"$schema\": \"http://json-schema.org/draft-07/schema#\",\n  \"type\": \"object\",\n  \"properties\": {\n    \"task_description\": {\"type\": \"string\"},\n    \"task_input\": {\"type\": \"object\"},\n    \"task_tool\": {\"type\": \"string\"},\n    \"task_output\": {\"type\": \"object\"},\n    \"task_status\": {\"type\": \"string\", \"enum\": [\"success\", \"failure\"]},\n    \"task_id\": {\"type\": \"string\"}\n  },\n  \"required\": [\"task_description\", \"task_input\", \"task_tool\", \"task_output\", \"task_status\", \"task_id\"]\n}"
+        "inputSchema": "{\n  \"$schema\": \"http://json-schema.org/draft-07/schema#\",\n  \"type\": \"object\",\n  \"properties\": {\n    \"task_description\": {\"type\": \"string\"},\n    \"query\": {\"type\": \"object\"},\n    \"task_tool\": {\"type\": \"string\"},\n    \"task_output\": {\"type\": \"object\"},\n    \"task_status\": {\"type\": \"string\", \"enum\": [\"success\", \"failure\"]},\n    \"task_id\": {\"type\": \"string\"}\n  },\n  \"required\": [\"task_description\", \"query\", \"task_tool\", \"task_output\", \"task_status\", \"task_id\"]\n}"
       },
-      "id": "8688bd1e-f9a9-42dd-83b6-cd0796b024c4",
+      "id": "2ad3d6c0-b60e-48a3-8949-7167dde2f655",
       "name": "Task Result Parser",
       "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
       "position": [
-        -608,
-        304
+        208,
+        224
       ],
       "typeVersion": 1.3
     },
@@ -127,42 +128,42 @@
           "temperature": 0.1
         }
       },
-      "id": "a3f54101-d173-41f5-ab1c-7acc441bfd52",
+      "id": "f87f4b76-9bd6-453d-919c-5ece29c3f1ce",
       "name": "Qwen2.5 Task Executor",
       "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
       "position": [
-        -880,
-        304
+        -64,
+        224
       ],
       "typeVersion": 1,
       "credentials": {
         "ollamaApi": {
-          "id": "5xLoLXEjNmerrDm4",
+          "id": "USclDUsNN9z5K0Bb",
           "name": "Ollama account"
         }
       }
     },
     {
       "parameters": {},
-      "id": "a7ea5291-fd8c-4bf7-b0cc-610aae3c8715",
+      "id": "69f29788-f7e0-4359-be4e-8c172632724f",
       "name": "Merge Task Results",
       "type": "n8n-nodes-base.merge",
       "position": [
-        -400,
-        160
+        416,
+        80
       ],
       "typeVersion": 3
     },
     {
       "parameters": {
-        "jsCode": "// Update task registry with completed task result\nconst taskResult = $input.first().json.output || $input.first().json;\nconst executedTask = $input.last().json;\n\n// Get the original data (task registry info) from the merged inputs\nconst originalData = executedTask.originalData;\n\n// Update the task registry\nconst taskRegistry = { ...originalData.taskRegistry };\nconst completedTasks = [...originalData.completedTasks];\nconst pendingTasks = [...originalData.pendingTasks];\n\n// Mark current task as completed\nif (taskRegistry[taskResult.task_id]) {\n  taskRegistry[taskResult.task_id].status = taskResult.task_status;\n  taskRegistry[taskResult.task_id].output = taskResult.task_output;\n  \n  if (taskResult.task_status === 'success') {\n    completedTasks.push(taskResult.task_id);\n    // Remove from pending\n    const pendingIndex = pendingTasks.indexOf(taskResult.task_id);\n    if (pendingIndex > -1) {\n      pendingTasks.splice(pendingIndex, 1);\n    }\n  }\n}\n\n// Find newly ready tasks (dependencies now satisfied)\nconst readyTasks = [];\nfor (const taskId of pendingTasks) {\n  const task = taskRegistry[taskId];\n  if (task.status === 'pending') {\n    // Check if all dependencies are completed\n    const allDependenciesMet = task.dependencies.every(depId => \n      completedTasks.includes(depId) && \n      taskRegistry[depId].status === 'success'\n    );\n    \n    if (allDependenciesMet) {\n      // Inject dependency outputs into task input\n      const enrichedTask = { ...task };\n      for (const depId of task.dependencies) {\n        const depOutput = taskRegistry[depId].output;\n        // Extract the result from the MCP tool output format\n        if (depOutput && depOutput.result !== undefined) {\n          enrichedTask.task_input = { text: depOutput.result };\n        } else {\n          enrichedTask.task_input = depOutput;\n        }\n      }\n      readyTasks.push(enrichedTask);\n    }\n  }\n}\n\nreturn {\n  taskRegistry,\n  pendingTasks,\n  completedTasks,\n  readyTasks,\n  currentBatch: (originalData.currentBatch || 0) + 1,\n  totalTasks: originalData.totalTasks,\n  lastTaskResult: taskResult\n};"
+        "jsCode": "// Update task registry with completed task result\nconst taskResult = $input.first().json.output || $input.first().json;\nconst executedTask = $input.last().json;\n\n// Get the original data (task registry info) from the merged inputs\nconst originalData = executedTask.originalData;\n\n// Update the task registry\nconst taskRegistry = { ...originalData.taskRegistry };\nconst completedTasks = [...originalData.completedTasks];\nconst pendingTasks = [...originalData.pendingTasks];\n\n// Mark current task as completed\nif (taskRegistry[taskResult.task_id]) {\n  taskRegistry[taskResult.task_id].status = taskResult.task_status;\n  taskRegistry[taskResult.task_id].output = taskResult.task_output;\n  \n  if (taskResult.task_status === 'success') {\n    completedTasks.push(taskResult.task_id);\n    // Remove from pending\n    const pendingIndex = pendingTasks.indexOf(taskResult.task_id);\n    if (pendingIndex > -1) {\n      pendingTasks.splice(pendingIndex, 1);\n    }\n  }\n}\n\n// Find newly ready tasks (dependencies now satisfied)\nconst readyTasks = [];\nfor (const taskId of pendingTasks) {\n  const task = taskRegistry[taskId];\n  if (task.status === 'pending') {\n    // Check if all dependencies are completed\n    const allDependenciesMet = task.dependencies.every(depId => \n      completedTasks.includes(depId) && \n      taskRegistry[depId].status === 'success'\n    );\n    \n    if (allDependenciesMet) {\n      // Inject dependency outputs into task input\n      const enrichedTask = { ...task };\n      for (const depId of task.dependencies) {\n        const depOutput = taskRegistry[depId].output;\n        // Extract the result from the MCP tool output format\n        if (depOutput && depOutput.result !== undefined) {\n          enrichedTask.query = { text: depOutput.result };\n        } else {\n          enrichedTask.query = depOutput;\n        }\n      }\n      readyTasks.push(enrichedTask);\n    }\n  }\n}\n\nreturn {\n  taskRegistry,\n  pendingTasks,\n  completedTasks,\n  readyTasks,\n  currentBatch: (originalData.currentBatch || 0) + 1,\n  totalTasks: originalData.totalTasks,\n  lastTaskResult: taskResult\n};"
       },
-      "id": "46ec0386-bbfb-49f0-8e52-74d899a29229",
+      "id": "923b9be6-2a7f-41bb-b8e2-96c45271c5e5",
       "name": "Update Task Registry",
       "type": "n8n-nodes-base.code",
       "position": [
-        -176,
-        160
+        640,
+        80
       ],
       "typeVersion": 2
     },
@@ -190,12 +191,12 @@
         },
         "options": {}
       },
-      "id": "7d7247dd-1f9e-4ec4-8ccf-4f3433bb870a",
+      "id": "c6096027-0e92-4f6d-915a-be2bae80400f",
       "name": "Check More Tasks",
       "type": "n8n-nodes-base.if",
       "position": [
-        64,
-        160
+        880,
+        80
       ],
       "typeVersion": 2
     },
@@ -204,12 +205,12 @@
         "mode": "runOnceForEachItem",
         "jsCode": "// Collect all completed task results for final response generation\nconst taskRegistry = $input.item.json.taskRegistry;\nconst completedTasks = $input.item.json.completedTasks;\n\nconst taskResults = [];\nfor (const taskId of completedTasks) {\n  const task = taskRegistry[taskId];\n  if (task && task.status === 'success') {\n    taskResults.push({\n      task_description: task.task_description,\n      task_input: task.task_input,\n      task_tool: task.tool,\n      task_output: task.output,\n      task_status: task.status,\n      task_id: taskId\n    });\n  }\n}\n\nreturn {\n  taskResults,\n  totalTasksCompleted: completedTasks.length,\n  allTasksCompleted: true\n};"
       },
-      "id": "2167c92c-87f2-48a1-856c-16d4315bf37f",
+      "id": "aa754360-bdf5-49f2-a531-de0d181da11b",
       "name": "Prepare Final Results",
       "type": "n8n-nodes-base.code",
       "position": [
-        288,
-        240
+        1248,
+        464
       ],
       "typeVersion": 2
     },
@@ -221,12 +222,12 @@
           "systemMessage": "You are a Response Synthesis AI Agent. Your role is to take all completed task results and create a comprehensive, coherent final response for the user.\n\nYou will receive an array of task results, each containing:\n- task_description: what the task accomplished\n- task_input: the input parameters used\n- task_tool: the tool that was used\n- task_output: the actual result/output\n- task_status: success/failure status\n- task_id: unique identifier\n\nYour job is to:\n1. Analyze all task results\n2. Synthesize the outputs into a coherent response\n3. Present the information in a user-friendly way\n4. Highlight key findings, results, or outcomes\n5. If there were any failed tasks, mention them appropriately\n\nPrepare final response summary."
         }
       },
-      "id": "a615d4e8-7fd8-4dd3-a2f0-9e025e4a947e",
+      "id": "cc5bac60-d45e-43a7-a4ec-a1e215586e6a",
       "name": "Response Synthesis Agent",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "position": [
-        768,
-        496
+        2288,
+        448
       ],
       "typeVersion": 2.2
     },
@@ -235,12 +236,12 @@
         "schemaType": "manual",
         "inputSchema": "{\n  \"$schema\": \"http://json-schema.org/draft-07/schema#\",\n  \"type\": \"object\",\n  \"properties\": {\n    \"final_response\": {\"type\": \"string\"},\n    \"task_summary\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"total_tasks\": {\"type\": \"number\"},\n        \"successful_tasks\": {\"type\": \"number\"},\n        \"failed_tasks\": {\"type\": \"number\"}\n      }\n    },\n    \"key_results\": {\n      \"type\": \"array\",\n      \"items\": {\"type\": \"string\"}\n    }\n  },\n  \"required\": [\"final_response\", \"task_summary\"]\n}"
       },
-      "id": "af2bd61e-7648-4569-ac78-a89c8398ff51",
+      "id": "94ad6ead-8761-457c-98f4-b46e78e689a0",
       "name": "Final Response Parser",
       "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
       "position": [
-        1040,
-        800
+        2560,
+        752
       ],
       "typeVersion": 1.3
     },
@@ -249,17 +250,17 @@
         "model": "Qwen2.5:latest",
         "options": {}
       },
-      "id": "e59a1ebf-ce71-4deb-b4ca-4501794ca91b",
+      "id": "b17daaec-69fe-431f-a17d-3eb30110888d",
       "name": "Qwen2.5 Response Synthesis",
       "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
       "position": [
-        752,
-        816
+        2272,
+        768
       ],
       "typeVersion": 1,
       "credentials": {
         "ollamaApi": {
-          "id": "5xLoLXEjNmerrDm4",
+          "id": "USclDUsNN9z5K0Bb",
           "name": "Ollama account"
         }
       }
@@ -270,12 +271,12 @@
         "waitUserReply": false,
         "options": {}
       },
-      "id": "0e288da0-992d-46f8-a0bf-58d0bef36f60",
+      "id": "1d3fcef0-bd53-4a6a-92fa-014807240507",
       "name": "Respond to Chat",
       "type": "@n8n/n8n-nodes-langchain.chat",
       "position": [
-        1216,
-        496
+        2736,
+        448
       ],
       "typeVersion": 1
     },
@@ -283,12 +284,12 @@
       "parameters": {
         "path": "task-executor-mcp-endpoint"
       },
-      "id": "26004f4b-06bd-4fc5-b8de-41186681ff01",
+      "id": "bcac98e5-b5e1-4ffc-8972-0d6a9fe53d2d",
       "name": "MCP Server Executor",
       "type": "@n8n/n8n-nodes-langchain.mcpTrigger",
       "position": [
-        -2240,
-        1216
+        -1424,
+        1136
       ],
       "webhookId": "task-executor-mcp-endpoint",
       "typeVersion": 2
@@ -308,12 +309,12 @@
           "mappingMode": "defineBelow"
         }
       },
-      "id": "eaab3c38-7118-4930-9b5d-15f52be8245b",
+      "id": "ff0a321d-c5f3-4d37-8417-9e44f255e85b",
       "name": "List Available Tools",
       "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
       "position": [
-        -2240,
-        1008
+        -1424,
+        928
       ],
       "typeVersion": 2.2
     },
@@ -337,23 +338,23 @@
           "mappingMode": "defineBelow"
         }
       },
-      "id": "11cdcbac-438a-4cf3-84ed-c70ba0363690",
+      "id": "acf40bb7-0164-493f-a151-0caed061f581",
       "name": "Format Final JSON Response",
       "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
       "position": [
-        -2240,
-        800
+        -1424,
+        720
       ],
       "typeVersion": 2.2
     },
     {
       "parameters": {},
-      "id": "9b974e4c-8c44-4d9d-b9b2-c4739ed1ab1e",
+      "id": "40c33d14-8eac-4ac1-a65b-8fb571aec4ab",
       "name": "Merge",
       "type": "n8n-nodes-base.merge",
       "position": [
-        112,
-        560
+        1536,
+        768
       ],
       "typeVersion": 3.2
     },
@@ -361,12 +362,12 @@
       "parameters": {
         "jsCode": "let finalResponse = {}\n\n// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  finalResponse = {...finalResponse, ...item.json }\n}\nreturn {...finalResponse};"
       },
-      "id": "452252c3-3f65-48d6-9697-bd5d306642c0",
+      "id": "f9fe4bc9-4313-4401-9534-f0c74bd507d8",
       "name": "Code in JavaScript",
       "type": "n8n-nodes-base.code",
       "position": [
-        320,
-        560
+        1968,
+        768
       ],
       "typeVersion": 2
     },
@@ -380,12 +381,12 @@
         ],
         "options": {}
       },
-      "id": "dd408765-c6e2-4394-9bef-68d482e8e6d5",
+      "id": "f848bcd7-f93a-4a6b-a570-bd3f9d4a54b2",
       "name": "MCP Available Tools Client",
       "type": "@n8n/n8n-nodes-langchain.mcpClientTool",
       "position": [
-        -720,
-        576
+        96,
+        496
       ],
       "typeVersion": 1.1
     },
@@ -395,12 +396,12 @@
           "responseMode": "responseNodes"
         }
       },
-      "id": "f23deaa0-a1b8-4049-9169-4c3abf3f4d6b",
+      "id": "ba0b5252-602e-482f-a2f2-076250e9a6b2",
       "name": "When chat message received",
       "type": "@n8n/n8n-nodes-langchain.chatTrigger",
       "position": [
-        -2256,
-        432
+        -1440,
+        352
       ],
       "webhookId": "task-builder-chat-trigger",
       "typeVersion": 1.3,
@@ -410,16 +411,16 @@
       "parameters": {
         "hasOutputParser": true,
         "options": {
-          "systemMessage": "You are a Task Planning AI Agent.\n\nYour workflow:\n1. FIRST: Call the 'mcp__list_tools' tool to discover available tools\n2. ANALYZE: Review the complete list of tools from the response\n3. PLAN: Analyze the user's request and determine which tools to use\n4. RESPOND: Provide a complete response that includes:\n   - Summary of available tools discovered\n   - Your task plan as a JSON object\n\nAfter calling listTools and getting the response, return this JSON structure:\n{\n  \"tasks\": [\n    {\n      \"tool\": \"<exact_tool_name_from_listTools_response>\",\n      \"task_description\": \"<what this task does>\",\n      \"task_input\": {\n        \"<param_name>\": \"<param_value>\"\n      },\n      \"dependencies\": [],\n      \"task_id\": \"task_1\"\n    }\n  ]\n}\n\nRules:\n- ALWAYS call mcp__list_tools first before creating any plan\n- Use exact tool names from the MCP response\n- task_input contains the tool's required parameters\n- dependencies is an array of task_id strings (empty array [] if no dependencies)\n- Each task needs a unique task_id like \"task_1\", \"task_2\"\n- task_input has the tool's required parameters\n- dependencies is an array (use [] if none)\n- Return only valid JSON, no markdown, no explanations\n",
+          "systemMessage": "You are a Task Planning AI Agent.\n\nYour workflow:\n1. FIRST: Call the 'mcp__list_tools' tool to discover available tools\n2. ANALYZE: Review the complete list of tools from the response\n3. PLAN: Analyze the user's request and determine which tools to use\n4. RESPOND: Provide a complete response that includes:\n   - Summary of available tools discovered\n   - Your task plan as a JSON object\n\nAfter calling listTools and getting the response, return this JSON structure:\n{\n  \"tasks\": [\n    {\n      \"tool\": \"<exact_tool_name_from_listTools_response>\",\n      \"task_description\": \"<what this task does>\",\n      \"query\": {\n        \"<param_name>\": \"<param_value>\"\n      },\n      \"dependencies\": [],\n      \"task_id\": \"task_1\"\n    }\n  ]\n}\n\nRules:\n- ALWAYS call mcp__list_tools first before creating any plan\n- Use exact tool names from the MCP response\n- query contains the tool's required parameters\n- dependencies is an array of task_id strings (empty array [] if no dependencies)\n- Each task needs a unique task_id like \"task_1\", \"task_2\"\n- dependencies is an array (use [] if none)\n- Return only valid JSON, no markdown, no explanations\n",
           "maxIterations": 10
         }
       },
-      "id": "5edd0dfb-bf03-41c3-ad65-69f8227b5317",
+      "id": "7d58d028-f495-47a3-b406-a5fa01e42d5b",
       "name": "Task Planner Agent",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "position": [
-        -2032,
-        432
+        -1216,
+        352
       ],
       "typeVersion": 2.2
     },
@@ -430,17 +431,17 @@
           "temperature": 0.1
         }
       },
-      "id": "9033ded7-f61a-46ed-a08f-456bd02b2798",
+      "id": "f161c12c-830c-4bdb-8cc1-08de0bb63e78",
       "name": "Qwen2.5 Task Planner",
       "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
       "position": [
-        -2096,
-        624
+        -1280,
+        544
       ],
       "typeVersion": 1,
       "credentials": {
         "ollamaApi": {
-          "id": "5xLoLXEjNmerrDm4",
+          "id": "USclDUsNN9z5K0Bb",
           "name": "Ollama account"
         }
       }
@@ -455,12 +456,12 @@
         ],
         "options": {}
       },
-      "id": "010c44a8-fb88-4a54-b722-6d0c929c9808",
+      "id": "47878646-8aba-48dc-9ac6-3733fe2baed8",
       "name": "MCP List Tools Client",
       "type": "@n8n/n8n-nodes-langchain.mcpClientTool",
       "position": [
-        -1872,
-        752
+        -1056,
+        672
       ],
       "typeVersion": 1.1
     }
@@ -596,11 +597,6 @@
         ]
       ]
     },
-    "Parse Task Plan JSON": {
-      "main": [
-        []
-      ]
-    },
     "Qwen2.5 Task Planner": {
       "ai_languageModel": [
         [
@@ -716,11 +712,11 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "9f497284-a2ba-4278-a05a-524d4ec36412",
+  "versionId": "0d31ca23-e33d-4a29-942e-5b723a5c0758",
   "meta": {
     "templateCredsSetupCompleted": true,
-    "instanceId": "e48c4a814881b1418af800a3fbbed8290840cab10cff0b5b090957237a9c47f1"
+    "instanceId": "da3a9c976fa04718d7c8e4d3120e91256531306773cca999fd545bae2261f29b"
   },
-  "id": "1Bw7zYaRFydWVLEo",
+  "id": "aqhuujg2iWCZ2rbJ",
   "tags": []
 }

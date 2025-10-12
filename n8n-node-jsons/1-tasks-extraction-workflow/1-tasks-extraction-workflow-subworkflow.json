@@ -1,0 +1,378 @@
+{
+  "name": "tasks-extraction-subworkflow",
+  "nodes": [
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:6789/mcp",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json, text/event-stream"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n    \"jsonrpc\": \"2.0\",\n    \"id\": 1,\n    \"method\": \"initialize\",\n    \"params\": {\n      \"protocolVersion\": \"2024-11-05\",\n      \"capabilities\": {},\n      \"clientInfo\": {\n        \"name\": \"curl-client\",\n        \"version\": \"1.0.0\"\n      }\n    }\n}\n",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "id": "8db0c32e-b367-4271-901f-dce5298b233d",
+      "name": "1. Initialize MCP Session",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        -1216,
+        0
+      ],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "ca9f4b36-262b-42b3-868b-38eac4da80d6",
+      "name": "Start",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "position": [
+        -1520,
+        0
+      ],
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract session ID from response\nconst response = $input.first().json;\nlet sessionId = null;\n\n// Check headers for mcp-session-id\nif (response.headers && response.headers['mcp-session-id']) {\n  sessionId = response.headers['mcp-session-id'];\n}\n\n// Also check in json response\nif (!sessionId && response.json) {\n  const data = response.json;\n  if (data.sessionId) sessionId = data.sessionId;\n  if (data['mcp-session-id']) sessionId = data['mcp-session-id'];\n}\n\nif (!sessionId) {\n  console.error('Response:', JSON.stringify(response, null, 2));\n  throw new Error('Could not extract mcp-session-id from initialize response. Check MCP server logs.');\n}\n\nconsole.log('✓ Session ID:', sessionId);\n\nconst userRequest = $('Start').item.json.chatInput;\n\nreturn {\n  json: {\n    session_id: sessionId,\n    user_request: userRequest\n  }\n};"
+      },
+      "id": "0f4102fd-3d7a-4231-952a-1d46a2610823",
+      "name": "Extract Session ID",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        -992,
+        0
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:6789/mcp",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json, text/event-stream"
+            },
+            {
+              "name": "mcp-session-id",
+              "value": "={{ $json.session_id }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n    \"jsonrpc\": \"2.0\",\n    \"method\": \"notifications/initialized\"\n}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "id": "1f2b9c76-3397-44af-bc68-4c829f17a1bb",
+      "name": "2. Send Initialized Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        -768,
+        0
+      ],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:6789/mcp",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json, text/event-stream"
+            },
+            {
+              "name": "mcp-session-id",
+              "value": "={{ $('Extract Session ID').item.json.session_id }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n    \"jsonrpc\": \"2.0\",\n    \"id\": 2,\n    \"method\": \"tools/list\",\n    \"params\": {}\n}",
+        "options": {
+          "response": {
+            "response": {}
+          }
+        }
+      },
+      "id": "199ec7a4-cf85-4d24-b8eb-a3e3c6d56709",
+      "name": "3. List Tools",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        -544,
+        0
+      ],
+      "typeVersion": 4.2,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// --- Extract Inputs ---\nconst mcpResponseArray = $input.all(); // Expecting an array of items with .json.data\nconst userRequest = $('Extract Session ID').item.json.user_request;\n\nconsole.log('Raw MCP response array:', JSON.stringify(mcpResponseArray, null, 2));\n\n// --- Helper: Parse possible JSON from MCP \"data\" strings ---\nfunction safeParseData(dataStr) {\n  try {\n    // Extract JSON object after \"data: \"\n    const jsonMatch = dataStr.match(/data:\\s*(\\{.*\\})/s);\n    if (!jsonMatch) return null;\n    return JSON.parse(jsonMatch[1]);\n  } catch (err) {\n    console.warn('Failed to parse data string:', err.message);\n    return null;\n  }\n}\n\n// --- Extract and parse all possible JSON objects ---\nlet toolsResponse = null;\n\nfor (const item of mcpResponseArray) {\n  const dataField = item.json?.data;\n  if (!dataField) continue;\n  const parsed = safeParseData(dataField);\n  if (parsed?.result?.tools) {\n    toolsResponse = parsed;\n    break; // found valid tools\n  }\n}\n\nif (!toolsResponse) {\n  throw new Error('No valid tools found in MCP response. Check input format.');\n}\n\n// --- Extract tools safely ---\nlet tools = [];\n\nif (Array.isArray(toolsResponse.result?.tools)) {\n  tools = toolsResponse.result.tools;\n} else if (toolsResponse.tools) {\n  tools = toolsResponse.tools;\n}\n\nif (!Array.isArray(tools) || tools.length === 0) {\n  throw new Error('No tools found in MCP result: ' + JSON.stringify(toolsResponse, null, 2));\n}\n\nconsole.log(`✓ Found ${tools.length} tools`);\n\n// --- Format tools ---\nconst formattedTools = tools.map(tool => {\n  const formatted = {\n    name: tool.name,\n    description: tool.description || 'No description available',\n  };\n\n  const schema = tool.inputSchema;\n  if (schema?.properties || schema?.$defs) {\n    formatted.inputSchema = schema;\n    const props = schema.properties || {};\n\n    // Extract from main properties or from nested $defs if referenced\n    let allProps = props;\n\n    if (schema.$defs) {\n      // Merge $defs properties if available\n      for (const defName of Object.keys(schema.$defs)) {\n        const def = schema.$defs[defName];\n        if (def.properties) {\n          allProps = { ...allProps, ...def.properties };\n        }\n      }\n    }\n\n    formatted.parameters = Object.keys(allProps).map(paramName => {\n      const param = allProps[paramName];\n      return {\n        name: paramName,\n        type: param.type || 'string',\n        description: param.description || '',\n        required: (schema.required || []).includes(paramName)\n      };\n    });\n  }\n\n  return formatted;\n});\n\nconsole.log('Formatted tools:', JSON.stringify(formattedTools, null, 2));\n\n// --- Return final structured output ---\nreturn {\n  json: {\n    available_tools: formattedTools,\n    user_request: userRequest,\n    tools_count: formattedTools.length,\n    raw_tools: tools\n  }\n};\n"
+      },
+      "id": "3be3c723-3cf5-495c-bd6d-97a783e2d1ae",
+      "name": "Parse Tool List",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        -320,
+        0
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "prompt",
+              "name": "planning_prompt",
+              "type": "string",
+              "value": "=# AVAILABLE TOOLS ({{ $json.tools_count }} total)\n\n{{ $json.available_tools.map(t => `## ${t.name}\n${t.description}\n\nParameters:\n${(t.parameters || []).map(p => `- ${p.name} (${p.type})${p.required ? ' [REQUIRED]' : ' [OPTIONAL]'}: ${p.description}`).join('\\n')}`).join('\\n\\n') }}\n\n---\n\n# USER REQUEST\n{{ $json.user_request }}\n\n---\n\n# YOUR TASK\n\nAnalyze the user's request and create a detailed task execution plan.\n\nFor EACH task:\n1. Choose the appropriate tool from the list above\n2. Write a clear description of what the task does\n3. Fill in ALL required parameters with specific values from the user's request\n4. List dependencies (task IDs that must complete first)\n\nReturn ONLY this JSON structure:\n\n```json\n{\n  \"tasks\": [\n    {\n      \"task_id\": \"task_1\",\n      \"tool\": \"exact_tool_name\",\n      \"task_description\": \"detailed description\",\n      \"params\": {\n        \"param_name\": \"actual_value\"\n      },\n      \"dependencies\": []\n    }\n  ]\n}\n```\n\nRULES:\n- Use ONLY tool names from the available tools list\n- Fill params with REAL values, not placeholders like \"example.com\" or \"file.txt\"\n- Extract values from the user's request\n- If the user request is vague, make reasonable assumptions\n- List dependencies if tasks must run in sequence"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "52d6e304-6c88-495b-a2c3-4c26d26cc454",
+      "name": "Build Planning Prompt",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        -96,
+        0
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.planning_prompt }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are an expert task planner. Create detailed, executable task plans with specific parameters. Never use placeholders - always extract or infer real values from the user's request.",
+          "maxIterations": 1
+        }
+      },
+      "id": "1eb27fbc-3ee8-4c73-9de3-058ddea0fa27",
+      "name": "Task Planning Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        128,
+        0
+      ],
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "jsCode": "// Comprehensive validation\nconst planOutput = $input.first().json;\nconst availableTools = $('Parse Tool List').item.json.available_tools;\nconst rawTools = $('Parse Tool List').item.json.raw_tools;\n\n// Extract task plan\nlet taskPlan = planOutput.output;\nconsole.log(taskPlan)\nif (typeof taskPlan === 'string') {\n  const jsonMatch = taskPlan.match(/\\{[\\s\\S]*\\}/);\n  if (!jsonMatch) {\n    throw new Error('Could not extract JSON from output');\n  }\n  taskPlan = JSON.parse(jsonMatch[0]);\n}\n\nif (!taskPlan.tasks || !Array.isArray(taskPlan.tasks)) {\n  throw new Error('Invalid task plan: missing tasks array');\n}\n\n// Build validation data\nconst validToolNames = availableTools.map(t => t.name);\nconst toolSchemas = {};\nrawTools.forEach(t => {\n  if (t.inputSchema) {\n    toolSchemas[t.name] = t.inputSchema;\n  }\n});\n\nconsole.log('Valid tools:', validToolNames);\nconsole.log('Tool schemas:', Object.keys(toolSchemas));\n\nconst errors = [];\nconst warnings = [];\nconst taskDetails = [];\n\n// Validate each task\nfor (const task of taskPlan.tasks) {\n  const detail = {\n    task_id: task.task_id,\n    tool: task.tool,\n    status: 'valid'\n  };\n  \n  // 1. Validate tool exists\n  if (!validToolNames.includes(task.tool)) {\n    errors.push(`Task ${task.task_id}: Unknown tool \"${task.tool}\". Available: ${validToolNames.join(', ')}`);\n    detail.status = 'invalid';\n  }\n  console.log(`Validated tool name hasIssue: ${errors.length > 0}`);\n  \n  // 2. Validate params\n  if (!task.params || typeof task.params !== 'object') {\n    console.log(`Validate params: inside if`);\n    errors.push(`Task ${task.task_id}: Missing or invalid params`);\n    detail.status = 'invalid';\n  } else {\n    console.log(`Validate params: inside else`);\n    const paramCount = Object.keys(task.params).length;\n    detail.param_count = paramCount;\n    \n    if (paramCount === 0) {\n      warnings.push(`Task ${task.task_id}: Empty params (might be valid if tool requires no params)`);\n    }\n    \n    // 3. Validate against schema if available\n    if (toolSchemas[task.tool]) {\n      const schema = toolSchemas[task.tool];\n      const required = schema.required || [];\n      const properties = schema.properties || {};\n\n      console.log(`Required params: ${JSON.stringify(required)}`)\n      \n      // Check required params\n      for (const reqParam of required) {\n        // let reqParamx = {...task[`${reqParam}`]};\n        // // try fixing\n        // task[`${reqParam}`] = {};\n        // task.params[\"params\"] = {...reqParamx};\n        // if (!task.params.hasOwnProperty(reqParam)) {\n        if (!task.hasOwnProperty(reqParam)) {\n          errors.push(`Task ${task.task_id}: Missing required parameter \"${reqParam}\"`);\n          detail.status = 'invalid';\n        }\n      }\n      \n      // Check for unknown params\n      for (const paramName of Object.keys(task.params)) {\n        if (!properties.hasOwnProperty(paramName)) {\n          warnings.push(`Task ${task.task_id}: Unknown parameter \"${paramName}\" (not in schema)`);\n        }\n      }\n      \n      detail.required_params = required;\n      detail.provided_params = Object.keys(task.params);\n    }\n  }\n  console.log(`Validated tool params hasIssue: ${errors.length > 0}`);\n  \n  // 4. Validate dependencies\n  if (task.dependencies && Array.isArray(task.dependencies)) {\n    const allTaskIds = taskPlan.tasks.map(t => t.task_id);\n    for (const dep of task.dependencies) {\n      if (!allTaskIds.includes(dep)) {\n        errors.push(`Task ${task.task_id}: Invalid dependency \"${dep}\" (task not found)`);\n        detail.status = 'invalid';\n      }\n    }\n    detail.dependency_count = task.dependencies.length;\n  }\n  \n  taskDetails.push(detail);\n}\n\nif (errors.length > 0) {\n  throw new Error('❌ Task plan validation failed:\\n\\n' + errors.join('\\n') + \n    '\\n\\nTask details:\\n' + JSON.stringify(taskDetails, null, 2));\n}\n\nconsole.log('✅ Task plan validated successfully');\nif (warnings.length > 0) {\n  console.warn('⚠️ Warnings:', warnings);\n}\n\nreturn {\n  json: {\n    success: true,\n    task_plan: taskPlan,\n    validation: {\n      tasks_count: taskPlan.tasks.length,\n      tools_used: [...new Set(taskPlan.tasks.map(t => t.tool))],\n      total_params: taskPlan.tasks.reduce((sum, t) => sum + Object.keys(t.params || {}).length, 0),\n      has_dependencies: taskPlan.tasks.some(t => t.dependencies && t.dependencies.length > 0),\n      warnings: warnings,\n      task_details: taskDetails\n    }\n  }\n};"
+      },
+      "id": "715d82f5-17d7-4591-8cd1-8c8084ccb64a",
+      "name": "Validate Task Plan",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        480,
+        0
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "model": "mistral:latest",
+        "options": {
+          "temperature": 0.3,
+          "numPredict": 3000,
+          "format": "json"
+        }
+      },
+      "id": "dfadc5d8-f903-4281-af89-1134ac88eccf",
+      "name": "mistral",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "position": [
+        144,
+        224
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "ollamaApi": {
+          "id": "USclDUsNN9z5K0Bb",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"tasks\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"task_id\": {\"type\": \"string\"},\n          \"tool\": {\"type\": \"string\"},\n          \"task_description\": {\"type\": \"string\"},\n          \"params\": {\"type\": \"object\"},\n          \"dependencies\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}}\n        },\n        \"required\": [\"task_id\", \"tool\", \"task_description\", \"params\"]\n      }\n    }\n  },\n  \"required\": [\"tasks\"]\n}"
+      },
+      "id": "151cec80-1fad-45f8-9b4a-cfbfb8224409",
+      "name": "tasks-parser",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "position": [
+        272,
+        224
+      ],
+      "typeVersion": 1.3
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "1. Initialize MCP Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "mistral": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Task Planning Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "tasks-parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Task Planning Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3. List Tools": {
+      "main": [
+        [
+          {
+            "node": "Parse Tool List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Tool List": {
+      "main": [
+        [
+          {
+            "node": "Build Planning Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Session ID": {
+      "main": [
+        [
+          {
+            "node": "2. Send Initialized Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Task Planning Agent": {
+      "main": [
+        [
+          {
+            "node": "Validate Task Plan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Planning Prompt": {
+      "main": [
+        [
+          {
+            "node": "Task Planning Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "1. Initialize MCP Session": {
+      "main": [
+        [
+          {
+            "node": "Extract Session ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2. Send Initialized Notification": {
+      "main": [
+        [
+          {
+            "node": "3. List Tools",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "6636d19a-22a3-4ae9-b9da-6f1168d6fdf1",
+  "meta": {
+    "instanceId": "da3a9c976fa04718d7c8e4d3120e91256531306773cca999fd545bae2261f29b"
+  },
+  "id": "K0AM6zEmBhCGqeD2",
+  "tags": []
+}

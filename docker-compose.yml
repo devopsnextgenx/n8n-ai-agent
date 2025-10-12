@@ -21,6 +21,7 @@ services:
       # - QUEUE_BULL_REDIS_PASSWORD=yourpassword
     extra_hosts:
       - "host.docker.internal:host-gateway"
+      - "host.docker.internal:172.17.0.1"
     depends_on:
       - mysql
       - redis

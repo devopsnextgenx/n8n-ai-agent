@@ -7,24 +7,24 @@ server:
   # Use "0.0.0.0" to bind to all interfaces
   # Use "127.0.0.1" or "localhost" for local access only
   host: "0.0.0.0"
-  
+
   # Port number for the server
   port: 6789
-  mode: "streamable-http"       # Server transport mode: auto, http, streamable-http, stdio
+  mode: "streamable-http" # Server transport mode: auto, http, streamable-http, stdio
 
 # Logging configuration
 logging:
   # Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-  level: "INFO"
-  
+  level: "DEBUG"
+
   # Log message format
   format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-  
+
   # Log file path (relative to project root or absolute path)
   file: "logs/mcp-server.log"
-  
+
   # Maximum size of log file before rotation
   max_file_size: "10MB"
-  
+
   # Number of backup log files to keep
   backup_count: 5

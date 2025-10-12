@@ -5,22 +5,23 @@ This module initializes the configuration, sets up logging, and starts the MCP s
 with the specified transport mode (http_streamable, http_app, or stdio).
 """
 
-import os
-import sys
 import argparse
 import asyncio
 import json
-from pathlib import Path
-from typing import Any, Dict, Callable, Awaitable, Optional
+import os
+import sys
 from functools import wraps
+from pathlib import Path
+from typing import Any, Awaitable, Callable, Dict, Optional
+
+import mcp
 from fastmcp import FastMCP
 from pydantic import BaseModel, Field
-import mcp
 
 # Load environment variables from .env file if it exists
 try:
     from dotenv import load_dotenv
-    
+
     # Look for .env file in the project root (parent of src/)
     env_path = Path(__file__).parent.parent / ".env"
     if env_path.exists():
@@ -39,20 +40,22 @@ src_path = Path(__file__).parent
 if str(src_path) not in sys.path:
     sys.path.insert(0, str(src_path))
 
-from config import get_config
-from utils import (
-    setup_logging,
-    get_logger,
-)
-from src.mcp_store.tools.crypto import encrypt_tool, decrypt_tool
-from src.log_middleware import log_tool_calls
-from mcp_store.tools.calculator import (
-    add_tool, subtract_tool, multiply_tool, divide_tool, modulo_tool
-)
-from mcp_store.resources.version import get_version_resource
 from mcp_store.resources.status import get_status_resource
 from mcp_store.resources.tools_list import get_tools_list_resource
+from mcp_store.resources.version import get_version_resource
+from mcp_store.tools.calculator import (
+    add_tool,
+    divide_tool,
+    modulo_tool,
+    multiply_tool,
+    subtract_tool,
+)
 from mcp_store.tools.ScriptExecutor import run_script
+from utils import get_logger, setup_logging
+
+from config import get_config
+from src.log_middleware import log_tool_calls
+from src.mcp_store.tools.crypto import decrypt_tool, encrypt_tool
 from src.mcp_store.tools.tools_list import list_tools
 
 
@@ -232,7 +235,7 @@ def create_server(server_name="MCP Crypto Server"):
     logger = get_logger(__name__)
     
     logger.info(f"MCP Server initialized: {server_name}")
-    
+
     # Setup tools and resources
     _setup_mcp_tools(server, logger)
     _setup_mcp_resources(server, logger)
@@ -424,9 +427,9 @@ def _setup_mcp_tools(server: FastMCP, logger) -> None:
     async def list_tools_tool(params: Optional[ListToolsParams] = None) -> Dict[str, Any]:
         """List all available tools with their schemas and descriptions."""
         try:
-            detailed = params.detailed if params else True
+            logger.info(f"List tools tool called with params: {params}")
+            detailed = params if params else True
             detailed = True
-            logger.debug(f"List tools tool called with detailed={detailed}")
             return await list_tools(detailed=detailed, app=server)
         except Exception as e:
             logger.error(f"Error in listTools tool: {e}")
@@ -494,7 +497,7 @@ def _add_test_routes(server: FastMCP, logger) -> None:
     logger.info("Adding test routes for browser access")
     
     try:
-        from starlette.responses import JSONResponse, HTMLResponse
+        from starlette.responses import HTMLResponse, JSONResponse
         
         @server.custom_route("/", methods=["GET"])
         async def root_endpoint(request):
@@ -682,7 +685,7 @@ def parse_arguments():
     """
     parser = argparse.ArgumentParser(description="MCP Crypto Server")
     parser.add_argument("--config", help="Path to configuration file")
-    parser.add_argument("--mode", choices=["auto", "http_app", "http_streamable", "http", "streamable-http", "stdio", "sse"], 
+    parser.add_argument("--mode", choices=["auto", "http", "streamable-http", "stdio", "sse"], 
                         help="Server transport mode (valid transports: stdio, http, sse, streamable-http)")
     parser.add_argument("--host", help="Host to bind the server to")
     parser.add_argument("--port", type=int, help="Port to bind the server to")

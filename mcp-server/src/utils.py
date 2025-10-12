@@ -5,12 +5,12 @@ logging setup, and other helper functions.
 """
 
 import base64
+import binascii
 import logging
 import os
 import sys
-import binascii
-from pathlib import Path
 from logging.handlers import RotatingFileHandler
+from pathlib import Path
 from typing import Optional, Union
 
 # Handle imports - try different import paths based on how the module is used
@@ -40,6 +40,8 @@ def setup_logging(logging_config: LoggingConfig) -> logging.Logger:
         logging.Logger: Configured logger instance
     """
     global _logging_configured, _logging_config_cache
+
+    print("Setting up logging configuration...")
     
     # Cache the logging configuration for reuse by get_logger
     _logging_config_cache = logging_config
@@ -67,6 +69,8 @@ def setup_logging(logging_config: LoggingConfig) -> logging.Logger:
     logger.addHandler(console_handler)
     
     # File handler with rotation
+    print(f"Logging to file: {logging_config.file}")
+
     max_bytes = _parse_file_size(logging_config.max_file_size)
     file_handler = RotatingFileHandler(
         logging_config.file,

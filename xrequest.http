@@ -1,4 +1,4 @@
-@MCPSESSIONID = d3c41ded0c9b4367bc7cf3fbeaba3b7a
+@MCPSESSIONID = 6806e8e829b8441ab0d85ead92fd278d
 
 ###
 POST http://localhost:6789/mcp
@@ -22,24 +22,24 @@ Accept: application/json, text/event-stream
 # Copy the mcp-session-id from the response above and set it to the variable MCPSESSIONID for subsequent requests
 
 ###
-POST http://localhost:6789/mcp
-Content-Type: application/json
-Accept: application/json, text/event-stream
-mcp-session-id: {{MCPSESSIONID}}
+# POST http://localhost:6789/mcp
+# Content-Type: application/json
+# Accept: application/json, text/event-stream
+# mcp-session-id: {{MCPSESSIONID}}
 
-{
-    "jsonrpc": "2.0",
-    "id": 1,
-    "method": "initialize",
-    "params": {
-        "protocolVersion": "2024-11-05",
-        "capabilities": {},
-        "clientInfo": {
-            "name": "test-client",
-            "version": "1.0.0"
-        }
-    }
-}
+# {
+#     "jsonrpc": "2.0",
+#     "id": 1,
+#     "method": "initialize",
+#     "params": {
+#         "protocolVersion": "2024-11-05",
+#         "capabilities": {},
+#         "clientInfo": {
+#             "name": "test-client",
+#             "version": "1.0.0"
+#         }
+#     }
+# }
 
 
 ###

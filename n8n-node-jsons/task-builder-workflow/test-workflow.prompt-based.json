@@ -1,0 +1,237 @@
+{
+  "name": "single-stage-forced-tool-call",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {
+          "responseMode": "responseNodes"
+        }
+      },
+      "id": "9d3b032b-61de-4512-8340-71cbbf0e795f",
+      "name": "When chat message received",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "position": [
+        16,
+        -80
+      ],
+      "webhookId": "forced-tool-trigger",
+      "typeVersion": 1.3
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.chatInput }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "STEP 1: Call mcp__list_tools with detailed=true\nSTEP 2: Wait for response\nSTEP 3: Create task plan using those tools\n\nYou CANNOT skip step 1. Start NOW by calling the tool.",
+          "maxIterations": 5,
+          "returnIntermediateSteps": true
+        }
+      },
+      "id": "ff865e6f-6ae1-4ac4-a80a-8e52995c5f5f",
+      "name": "Task Planner (Forced)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        320,
+        -80
+      ],
+      "executeOnce": true,
+      "typeVersion": 2.2,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "endpointUrl": "http://host.docker.internal:6789/mcp",
+        "serverTransport": "httpStreamable",
+        "include": "selected",
+        "includeTools": [
+          "listTools"
+        ],
+        "options": {}
+      },
+      "id": "25fd20a9-f494-4ade-a11e-485cf2db3a45",
+      "name": "MCP List Tools",
+      "type": "@n8n/n8n-nodes-langchain.mcpClientTool",
+      "position": [
+        480,
+        128
+      ],
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"tasks\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"task_id\": {\"type\": \"string\"},\n          \"tool\": {\"type\": \"string\"},\n          \"task_description\": {\"type\": \"string\"},\n          \"params\": {\"type\": \"object\"},\n          \"dependencies\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}}\n        },\n        \"required\": [\"task_id\", \"tool\", \"task_description\", \"params\"]\n      }\n    }\n  }\n}"
+      },
+      "id": "556cd6fd-9f99-4a4c-a825-b1a37b9f817b",
+      "name": "Task Parser",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "position": [
+        624,
+        128
+      ],
+      "typeVersion": 1.3
+    },
+    {
+      "parameters": {
+        "jsCode": "const agentOutput = $input.first().json;\nconst steps = agentOutput.intermediateSteps || [];\n\nlet toolCalled = false;\nfor (const step of steps) {\n  const action = step.action || step[0];\n  if (action && (action.tool === 'mcp__list_tools' || action.toolName === 'mcp__list_tools')) {\n    toolCalled = true;\n    break;\n  }\n}\n\nif (!toolCalled) {\n  throw new Error('❌ Agent did not call mcp__list_tools.\\n\\nTry these models instead:\\n• deepseek-r1:7b\\n• mistral:latest\\n• llama3.1:8b\\n\\nOr use the two-stage workflow.');\n}\n\nlet output = agentOutput.output;\nif (typeof output === 'string') {\n  const match = output.match(/\\{[\\s\\S]*\\}/);\n  if (match) output = JSON.parse(match[0]);\n}\n\nif (!output.tasks) {\n  throw new Error('Invalid task plan structure');\n}\n\nreturn {\n  json: {\n    success: true,\n    tool_called: true,\n    output: output,\n    steps: steps.length\n  }\n};"
+      },
+      "id": "ba6449a3-3c8b-4585-a9f0-c4734fa8b86d",
+      "name": "Validator",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        624,
+        -80
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "message": "=✅ Task Plan Generated\n\n```json\n{{ JSON.stringify($json.output, null, 2) }}\n```\n\n✓ Tool called: {{ $json.tool_called }}\n✓ Steps: {{ $json.steps }}",
+        "waitUserReply": false,
+        "options": {}
+      },
+      "id": "6f966934-fda7-4fa9-8bc1-2d8231aeb0ba",
+      "name": "Respond to Chat",
+      "type": "@n8n/n8n-nodes-langchain.chat",
+      "position": [
+        816,
+        -80
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "model": "deepseek-r1:7b",
+        "options": {
+          "temperature": 0.1,
+          "numPredict": 2000,
+          "format": "json"
+        }
+      },
+      "id": "a09f94a6-67a0-4956-bf48-90284a5eac77",
+      "name": "DeepSeek R1 7B1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "position": [
+        272,
+        144
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "ollamaApi": {
+          "id": "USclDUsNN9z5K0Bb",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "mistral:latest",
+        "options": {
+          "temperature": 0.1,
+          "numPredict": 2000,
+          "format": "json"
+        }
+      },
+      "id": "e9b5ec51-3356-4caa-9bfd-b7d6aaebdb28",
+      "name": "mistral",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "position": [
+        128,
+        144
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "ollamaApi": {
+          "id": "USclDUsNN9z5K0Bb",
+          "name": "Ollama account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "mistral": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Task Planner (Forced)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validator": {
+      "main": [
+        [
+          {
+            "node": "Respond to Chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Task Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Task Planner (Forced)",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MCP List Tools": {
+      "ai_tool": [
+        [
+          {
+            "node": "Task Planner (Forced)",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DeepSeek R1 7B1": {
+      "ai_languageModel": [
+        []
+      ]
+    },
+    "Task Planner (Forced)": {
+      "main": [
+        [
+          {
+            "node": "Validator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Task Planner (Forced)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "773dda27-be18-4168-ad9d-05eb30905c7d",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "da3a9c976fa04718d7c8e4d3120e91256531306773cca999fd545bae2261f29b"
+  },
+  "id": "JtwRz8px3zHnOG5Y",
+  "tags": []
+}

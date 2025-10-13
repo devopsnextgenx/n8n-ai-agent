@@ -29,11 +29,11 @@
           }
         }
       },
-      "id": "8db0c32e-b367-4271-901f-dce5298b233d",
+      "id": "155c73ec-ab12-4d30-8cae-c277b304ab46",
       "name": "1. Initialize MCP Session",
       "type": "n8n-nodes-base.httpRequest",
       "position": [
-        -1216,
+        304,
         0
       ],
       "typeVersion": 4.2
@@ -42,11 +42,11 @@
       "parameters": {
         "inputSource": "passthrough"
       },
-      "id": "ca9f4b36-262b-42b3-868b-38eac4da80d6",
+      "id": "d84f814e-2610-4bc1-8f0f-b27235dcf349",
       "name": "Start",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "position": [
-        -1520,
+        0,
         0
       ],
       "typeVersion": 1.1
@@ -55,11 +55,11 @@
       "parameters": {
         "jsCode": "// Extract session ID from response\nconst response = $input.first().json;\nlet sessionId = null;\n\n// Check headers for mcp-session-id\nif (response.headers && response.headers['mcp-session-id']) {\n  sessionId = response.headers['mcp-session-id'];\n}\n\n// Also check in json response\nif (!sessionId && response.json) {\n  const data = response.json;\n  if (data.sessionId) sessionId = data.sessionId;\n  if (data['mcp-session-id']) sessionId = data['mcp-session-id'];\n}\n\nif (!sessionId) {\n  console.error('Response:', JSON.stringify(response, null, 2));\n  throw new Error('Could not extract mcp-session-id from initialize response. Check MCP server logs.');\n}\n\nconsole.log('✓ Session ID:', sessionId);\n\nconst userRequest = $('Start').item.json.chatInput;\n\nreturn {\n  json: {\n    session_id: sessionId,\n    user_request: userRequest\n  }\n};"
       },
-      "id": "0f4102fd-3d7a-4231-952a-1d46a2610823",
+      "id": "8da39e0c-0a45-48e8-875a-5c49d8fd3b6a",
       "name": "Extract Session ID",
       "type": "n8n-nodes-base.code",
       "position": [
-        -992,
+        528,
         0
       ],
       "typeVersion": 2
@@ -96,11 +96,11 @@
           }
         }
       },
-      "id": "1f2b9c76-3397-44af-bc68-4c829f17a1bb",
+      "id": "b7b24ca9-2caf-49fa-a157-e26b0a20eb3e",
       "name": "2. Send Initialized Notification",
       "type": "n8n-nodes-base.httpRequest",
       "position": [
-        -768,
+        752,
         0
       ],
       "typeVersion": 4.2
@@ -135,11 +135,11 @@
           }
         }
       },
-      "id": "199ec7a4-cf85-4d24-b8eb-a3e3c6d56709",
+      "id": "d3993d26-83c6-47c6-805c-d891f293f119",
       "name": "3. List Tools",
       "type": "n8n-nodes-base.httpRequest",
       "position": [
-        -544,
+        976,
         0
       ],
       "typeVersion": 4.2,
@@ -149,11 +149,11 @@
       "parameters": {
         "jsCode": "// --- Extract Inputs ---\nconst mcpResponseArray = $input.all(); // Expecting an array of items with .json.data\nconst userRequest = $('Extract Session ID').item.json.user_request;\n\nconsole.log('Raw MCP response array:', JSON.stringify(mcpResponseArray, null, 2));\n\n// --- Helper: Parse possible JSON from MCP \"data\" strings ---\nfunction safeParseData(dataStr) {\n  try {\n    // Extract JSON object after \"data: \"\n    const jsonMatch = dataStr.match(/data:\\s*(\\{.*\\})/s);\n    if (!jsonMatch) return null;\n    return JSON.parse(jsonMatch[1]);\n  } catch (err) {\n    console.warn('Failed to parse data string:', err.message);\n    return null;\n  }\n}\n\n// --- Extract and parse all possible JSON objects ---\nlet toolsResponse = null;\n\nfor (const item of mcpResponseArray) {\n  const dataField = item.json?.data;\n  if (!dataField) continue;\n  const parsed = safeParseData(dataField);\n  if (parsed?.result?.tools) {\n    toolsResponse = parsed;\n    break; // found valid tools\n  }\n}\n\nif (!toolsResponse) {\n  throw new Error('No valid tools found in MCP response. Check input format.');\n}\n\n// --- Extract tools safely ---\nlet tools = [];\n\nif (Array.isArray(toolsResponse.result?.tools)) {\n  tools = toolsResponse.result.tools;\n} else if (toolsResponse.tools) {\n  tools = toolsResponse.tools;\n}\n\nif (!Array.isArray(tools) || tools.length === 0) {\n  throw new Error('No tools found in MCP result: ' + JSON.stringify(toolsResponse, null, 2));\n}\n\nconsole.log(`✓ Found ${tools.length} tools`);\n\n// --- Format tools ---\nconst formattedTools = tools.map(tool => {\n  const formatted = {\n    name: tool.name,\n    description: tool.description || 'No description available',\n  };\n\n  const schema = tool.inputSchema;\n  if (schema?.properties || schema?.$defs) {\n    formatted.inputSchema = schema;\n    const props = schema.properties || {};\n\n    // Extract from main properties or from nested $defs if referenced\n    let allProps = props;\n\n    if (schema.$defs) {\n      // Merge $defs properties if available\n      for (const defName of Object.keys(schema.$defs)) {\n        const def = schema.$defs[defName];\n        if (def.properties) {\n          allProps = { ...allProps, ...def.properties };\n        }\n      }\n    }\n\n    formatted.parameters = Object.keys(allProps).map(paramName => {\n      const param = allProps[paramName];\n      return {\n        name: paramName,\n        type: param.type || 'string',\n        description: param.description || '',\n        required: (schema.required || []).includes(paramName)\n      };\n    });\n  }\n\n  return formatted;\n});\n\nconsole.log('Formatted tools:', JSON.stringify(formattedTools, null, 2));\n\n// --- Return final structured output ---\nreturn {\n  json: {\n    available_tools: formattedTools,\n    user_request: userRequest,\n    tools_count: formattedTools.length,\n    raw_tools: tools\n  }\n};\n"
       },
-      "id": "3be3c723-3cf5-495c-bd6d-97a783e2d1ae",
+      "id": "8e96396d-84d6-4deb-9a0e-efc2ed118d40",
       "name": "Parse Tool List",
       "type": "n8n-nodes-base.code",
       "position": [
-        -320,
+        1200,
         0
       ],
       "typeVersion": 2
@@ -172,11 +172,11 @@
         },
         "options": {}
       },
-      "id": "52d6e304-6c88-495b-a2c3-4c26d26cc454",
+      "id": "915269aa-e3a9-4b5a-8cc3-697e17ba5d87",
       "name": "Build Planning Prompt",
       "type": "n8n-nodes-base.set",
       "position": [
-        -96,
+        1424,
         0
       ],
       "typeVersion": 3.4
@@ -187,28 +187,28 @@
         "text": "={{ $json.planning_prompt }}",
         "hasOutputParser": true,
         "options": {
-          "systemMessage": "You are an expert task planner. Create detailed, executable task plans with specific parameters. \n- Never use placeholders - always extract or infer real values from the user's request.\n- For tasks which depend on previous task, Params can be given values from prvious task say with index xindex in tasks array as below,\n{\n   \"$ref\": \"#/tasks/xindex/results\"\n}",
+          "systemMessage": "You are an expert task planner. Create detailed, executable task plans with specific parameters. \n- Never use placeholders - always extract or infer real values from the user's request.\n- For tasks which depend on previous task, Params can be given values from prvious task say with index 0 in tasks array as below,\n{\n   \"$ref\": \"#/tasks/0/results\"\n}",
           "maxIterations": 1
         }
       },
-      "id": "1eb27fbc-3ee8-4c73-9de3-058ddea0fa27",
+      "id": "8509949d-f7e8-4328-b4e3-81a70443bd5a",
       "name": "Task Planning Agent",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "position": [
-        128,
+        1648,
         0
       ],
       "typeVersion": 2.2
     },
     {
       "parameters": {
-        "jsCode": "// Comprehensive validation\nconst planOutput = $input.first().json;\nconst availableTools = $('Parse Tool List').item.json.available_tools;\nconst rawTools = $('Parse Tool List').item.json.raw_tools;\n\n// Extract task plan\nlet taskPlan = planOutput.output;\nconsole.log(taskPlan)\nif (typeof taskPlan === 'string') {\n  const jsonMatch = taskPlan.match(/\\{[\\s\\S]*\\}/);\n  if (!jsonMatch) {\n    throw new Error('Could not extract JSON from output');\n  }\n  taskPlan = JSON.parse(jsonMatch[0]);\n}\n\nif (!taskPlan.tasks || !Array.isArray(taskPlan.tasks)) {\n  throw new Error('Invalid task plan: missing tasks array');\n}\n\n// Build validation data\nconst validToolNames = availableTools.map(t => t.name);\nconst toolSchemas = {};\nrawTools.forEach(t => {\n  if (t.inputSchema) {\n    toolSchemas[t.name] = t.inputSchema;\n  }\n});\n\nconsole.log('Valid tools:', validToolNames);\nconsole.log('Tool schemas:', Object.keys(toolSchemas));\n\nconst errors = [];\nconst warnings = [];\nconst taskDetails = [];\n\n// Validate each task\nfor (const task of taskPlan.tasks) {\n  const detail = {\n    task_id: task.task_id,\n    tool: task.tool,\n    status: 'valid'\n  };\n  \n  // 1. Validate tool exists\n  if (!validToolNames.includes(task.tool)) {\n    errors.push(`Task ${task.task_id}: Unknown tool \"${task.tool}\". Available: ${validToolNames.join(', ')}`);\n    detail.status = 'invalid';\n  }\n  console.log(`Validated tool name hasIssue: ${errors.length > 0}`);\n  \n  // 2. Validate params\n  if (!task.params || typeof task.params !== 'object') {\n    console.log(`Validate params: inside if`);\n    errors.push(`Task ${task.task_id}: Missing or invalid params`);\n    detail.status = 'invalid';\n  } else {\n    console.log(`Validate params: inside else`);\n    const paramCount = Object.keys(task.params).length;\n    detail.param_count = paramCount;\n    \n    if (paramCount === 0) {\n      warnings.push(`Task ${task.task_id}: Empty params (might be valid if tool requires no params)`);\n    }\n    \n    // 3. Validate against schema if available\n    if (toolSchemas[task.tool]) {\n      const schema = toolSchemas[task.tool];\n      const required = schema.required || [];\n      const properties = schema.properties || {};\n\n      console.log(`Required params: ${JSON.stringify(required)}`)\n      \n      // Check required params\n      for (const reqParam of required) {\n        // let reqParamx = {...task[`${reqParam}`]};\n        // // try fixing\n        // task[`${reqParam}`] = {};\n        // task.params[\"params\"] = {...reqParamx};\n        // if (!task.params.hasOwnProperty(reqParam)) {\n        if (!task.hasOwnProperty(reqParam)) {\n          errors.push(`Task ${task.task_id}: Missing required parameter \"${reqParam}\"`);\n          detail.status = 'invalid';\n        }\n      }\n      \n      // Check for unknown params\n      for (const paramName of Object.keys(task.params)) {\n        if (!properties.hasOwnProperty(paramName)) {\n          warnings.push(`Task ${task.task_id}: Unknown parameter \"${paramName}\" (not in schema)`);\n        }\n      }\n      \n      detail.required_params = required;\n      detail.provided_params = Object.keys(task.params);\n    }\n  }\n  console.log(`Validated tool params hasIssue: ${errors.length > 0}`);\n  \n  // 4. Validate dependencies\n  if (task.dependencies && Array.isArray(task.dependencies)) {\n    const allTaskIds = taskPlan.tasks.map(t => t.task_id);\n    for (const dep of task.dependencies) {\n      if (!allTaskIds.includes(dep)) {\n        errors.push(`Task ${task.task_id}: Invalid dependency \"${dep}\" (task not found)`);\n        detail.status = 'invalid';\n      }\n    }\n    detail.dependency_count = task.dependencies.length;\n  }\n  \n  taskDetails.push(detail);\n}\n\nif (errors.length > 0) {\n  throw new Error('❌ Task plan validation failed:\\n\\n' + errors.join('\\n') + \n    '\\n\\nTask details:\\n' + JSON.stringify(taskDetails, null, 2));\n}\n\nconsole.log('✅ Task plan validated successfully');\nif (warnings.length > 0) {\n  console.warn('⚠️ Warnings:', warnings);\n}\n\nreturn {\n  json: {\n    success: true,\n    chatInput: $(\"Start\").first().json,\n    task_plan: taskPlan,\n    validation: {\n      tasks_count: taskPlan.tasks.length,\n      tools_used: [...new Set(taskPlan.tasks.map(t => t.tool))],\n      total_params: taskPlan.tasks.reduce((sum, t) => sum + Object.keys(t.params || {}).length, 0),\n      has_dependencies: taskPlan.tasks.some(t => t.dependencies && t.dependencies.length > 0),\n      warnings: warnings,\n      task_details: taskDetails\n    }\n  }\n};"
+        "jsCode": "const planOutput = $input.first().json;\nconst availableTools = $('Parse Tool List').item.json.available_tools;\nconst rawTools = $('Parse Tool List').item.json.raw_tools;\n\n// Extract task plan\nlet taskPlan = planOutput.output;\n\nif (typeof taskPlan === 'string') {\n  const jsonMatch = taskPlan.match(/\\{[\\s\\S]*\\}/);\n  if (!jsonMatch) {\n    throw new Error('Could not extract JSON from output');\n  }\n  taskPlan = JSON.parse(jsonMatch[0]);\n}\n\nif (!taskPlan.tasks || !Array.isArray(taskPlan.tasks)) {\n  throw new Error('Invalid task plan: missing tasks array');\n}\n\nconst validToolNames = availableTools.map(t => t.name);\nconst toolSchemas = {};\nrawTools.forEach(t => {\n  if (t.inputSchema) {\n    toolSchemas[t.name] = t.inputSchema;\n  }\n});\n\n// Helper function to validate nested schema\nfunction validateAgainstSchema(data, schema, path = '', errors = [], taskId = '') {\n  // Handle required fields at current level\n  if (schema.required && Array.isArray(schema.required)) {\n    for (const reqField of schema.required) {\n      const fieldPath = path ? `${path}.${reqField}` : reqField;\n      \n      if (!(reqField in data)) {\n        errors.push(`Task ${taskId}: Missing required parameter \"${fieldPath}\"`);\n      }\n    }\n  }\n  \n  // Handle properties validation\n  if (schema.properties && typeof schema.properties === 'object') {\n    for (const [propKey, propSchema] of Object.entries(schema.properties)) {\n      const propPath = path ? `${path}.${propKey}` : propKey;\n      const propValue = data[propKey];\n      \n      // Skip if property doesn't exist and is not required\n      if (!(propKey in data)) {\n        continue;\n      }\n      \n      // Check if value is a $ref (skip validation for references)\n      if (propValue && typeof propValue === 'object' && propValue.$ref) {\n        continue;\n      }\n      \n      // Validate nested object\n      if (propSchema.type === 'object' && propSchema.properties) {\n        if (propValue && typeof propValue === 'object' && !Array.isArray(propValue)) {\n          validateAgainstSchema(propValue, propSchema, propPath, errors, taskId);\n        } else if (propValue !== null && propValue !== undefined) {\n          errors.push(`Task ${taskId}: Parameter \"${propPath}\" must be an object`);\n        }\n      }\n      \n      // Validate array\n      if (propSchema.type === 'array') {\n        if (!Array.isArray(propValue)) {\n          if (propValue !== null && propValue !== undefined) {\n            errors.push(`Task ${taskId}: Parameter \"${propPath}\" must be an array`);\n          }\n        } else if (propSchema.items) {\n          // Validate each array item\n          propValue.forEach((item, index) => {\n            const itemPath = `${propPath}[${index}]`;\n            \n            // Skip $ref objects in arrays\n            if (item && typeof item === 'object' && item.$ref) {\n              return;\n            }\n            \n            // If items schema is an object with properties, validate recursively\n            if (propSchema.items.type === 'object' && propSchema.items.properties) {\n              if (item && typeof item === 'object') {\n                validateAgainstSchema(item, propSchema.items, itemPath, errors, taskId);\n              } else {\n                errors.push(`Task ${taskId}: Array item at \"${itemPath}\" must be an object`);\n              }\n            }\n            // Validate array item type\n            else if (propSchema.items.type) {\n              const itemType = Array.isArray(item) ? 'array' : typeof item;\n              if (itemType !== propSchema.items.type && item !== null) {\n                errors.push(`Task ${taskId}: Array item at \"${itemPath}\" must be of type \"${propSchema.items.type}\"`);\n              }\n            }\n          });\n        }\n      }\n      \n      // Validate primitive types\n      if (propSchema.type && !['object', 'array'].includes(propSchema.type)) {\n        const valueType = Array.isArray(propValue) ? 'array' : typeof propValue;\n        \n        // Allow null values unless explicitly forbidden\n        if (propValue !== null && valueType !== propSchema.type) {\n          // Special handling for number/integer\n          if (propSchema.type === 'number' && valueType === 'number') {\n            continue;\n          }\n          if (propSchema.type === 'integer' && valueType === 'number' && Number.isInteger(propValue)) {\n            continue;\n          }\n          \n          errors.push(`Task ${taskId}: Parameter \"${propPath}\" must be of type \"${propSchema.type}\", got \"${valueType}\"`);\n        }\n      }\n      \n      // Validate enum values\n      if (propSchema.enum && Array.isArray(propSchema.enum)) {\n        if (!propSchema.enum.includes(propValue)) {\n          errors.push(`Task ${taskId}: Parameter \"${propPath}\" must be one of: ${propSchema.enum.join(', ')}`);\n        }\n      }\n    }\n  }\n  \n  // Handle oneOf, anyOf, allOf schemas\n  if (schema.oneOf && Array.isArray(schema.oneOf)) {\n    const validSchemas = schema.oneOf.filter(subSchema => {\n      const tempErrors = [];\n      validateAgainstSchema(data, subSchema, path, tempErrors, taskId);\n      return tempErrors.length === 0;\n    });\n    \n    if (validSchemas.length === 0) {\n      errors.push(`Task ${taskId}: Parameter \"${path || 'root'}\" does not match any of the allowed schemas (oneOf)`);\n    } else if (validSchemas.length > 1) {\n      errors.push(`Task ${taskId}: Parameter \"${path || 'root'}\" matches multiple schemas, but should match exactly one (oneOf)`);\n    }\n  }\n  \n  if (schema.anyOf && Array.isArray(schema.anyOf)) {\n    const validSchemas = schema.anyOf.filter(subSchema => {\n      const tempErrors = [];\n      validateAgainstSchema(data, subSchema, path, tempErrors, taskId);\n      return tempErrors.length === 0;\n    });\n    \n    if (validSchemas.length === 0) {\n      errors.push(`Task ${taskId}: Parameter \"${path || 'root'}\" does not match any of the allowed schemas (anyOf)`);\n    }\n  }\n  \n  if (schema.allOf && Array.isArray(schema.allOf)) {\n    schema.allOf.forEach(subSchema => {\n      validateAgainstSchema(data, subSchema, path, errors, taskId);\n    });\n  }\n  \n  return errors;\n}\n\nconst errors = [];\nconst warnings = [];\nconst taskDetails = [];\n\n// Validate each task\nfor (const task of taskPlan.tasks) {\n  const detail = {\n    task_id: task.task_id,\n    tool: task.tool,\n    status: 'valid'\n  };\n  \n  // Validate tool exists\n  if (!validToolNames.includes(task.tool)) {\n    errors.push(`Task ${task.task_id}: Unknown tool \"${task.tool}\"`);\n    detail.status = 'invalid';\n  }\n  \n  // Validate params exist\n  if (!task.params || typeof task.params !== 'object') {\n    errors.push(`Task ${task.task_id}: Missing or invalid params`);\n    detail.status = 'invalid';\n  } else {\n    // Check for parameter references\n    for (const [paramKey, paramValue] of Object.entries(task.params)) {\n      // Check if param is a $ref object\n      if (paramValue && typeof paramValue === 'object' && paramValue.$ref) {\n        const refMatch = paramValue.$ref.match(/^#\\/tasks\\/(\\d+)\\/results$/);\n        if (refMatch) {\n          const referencedIndex = parseInt(refMatch[1]);\n          \n          // Validate that the referenced index exists and is before current task\n          const currentTaskIndex = taskPlan.tasks.findIndex(t => t.task_id === task.task_id);\n          if (referencedIndex >= currentTaskIndex) {\n            errors.push(`Task ${task.task_id}: Invalid reference to task index ${referencedIndex} - must reference earlier tasks`);\n            detail.status = 'invalid';\n          }\n          \n          // Validate that the referenced task exists\n          if (referencedIndex >= taskPlan.tasks.length) {\n            errors.push(`Task ${task.task_id}: Referenced task index ${referencedIndex} does not exist`);\n            detail.status = 'invalid';\n          }\n          \n          // Validate that the dependency is properly declared\n          const referencedTaskId = taskPlan.tasks[referencedIndex]?.task_id;\n          if (referencedTaskId && (!task.dependencies || !task.dependencies.includes(referencedTaskId))) {\n            errors.push(`Task ${task.task_id}: Missing dependency declaration for referenced task ${referencedTaskId}`);\n            detail.status = 'invalid';\n          }\n        } else {\n          errors.push(`Task ${task.task_id}: Invalid $ref format in parameter \"${paramKey}\"`);\n          detail.status = 'invalid';\n        }\n      }\n    }\n    \n    // Validate against schema using recursive function\n    if (toolSchemas[task.tool]) {\n      const schema = toolSchemas[task.tool];\n      const schemaErrors = validateAgainstSchema(task, schema, '', [], task.task_id);\n      \n      if (schemaErrors.length > 0) {\n        errors.push(...schemaErrors);\n        detail.status = 'invalid';\n      }\n      \n      detail.required_params = schema.required || [];\n      detail.provided_params = Object.keys(task.params);\n    }\n  }\n  \n  // Validate dependencies exist\n  if (task.dependencies && Array.isArray(task.dependencies)) {\n    const allTaskIds = taskPlan.tasks.map(t => t.task_id);\n    for (const dep of task.dependencies) {\n      if (!allTaskIds.includes(dep)) {\n        errors.push(`Task ${task.task_id}: Invalid dependency \"${dep}\" (task not found)`);\n        detail.status = 'invalid';\n      }\n    }\n    detail.dependency_count = task.dependencies.length;\n  }\n  \n  taskDetails.push(detail);\n}\n\nif (errors.length > 0) {\n  console.log(errors);\n  throw new Error('❌ Task plan validation failed:\\n\\n' + errors.join('\\n') + \n    '\\n\\nTask details:\\n' + JSON.stringify(taskDetails, null, 2));\n}\n\nreturn {\n  json: {\n    success: true,\n    chatInput: $(\"Start\").first().json,\n    task_plan: taskPlan,\n    validation: {\n      tasks_count: taskPlan.tasks.length,\n      tools_used: [...new Set(taskPlan.tasks.map(t => t.tool))],\n      total_params: taskPlan.tasks.reduce((sum, t) => sum + Object.keys(t.params || {}).length, 0),\n      has_dependencies: taskPlan.tasks.some(t => t.dependencies && t.dependencies.length > 0),\n      warnings: warnings,\n      task_details: taskDetails\n    }\n  }\n};"
       },
-      "id": "715d82f5-17d7-4591-8cd1-8c8084ccb64a",
+      "id": "b57a3eb9-f92a-49f4-abcf-11a00e99b7e9",
       "name": "Validate Task Plan",
       "type": "n8n-nodes-base.code",
       "position": [
-        480,
+        2208,
         0
       ],
       "typeVersion": 2
@@ -222,18 +222,18 @@
           "format": "json"
         }
       },
-      "id": "dfadc5d8-f903-4281-af89-1134ac88eccf",
+      "id": "22f91678-2e10-473f-ab70-2ba6d845a7c1",
       "name": "mistral",
       "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
       "position": [
-        128,
+        1648,
         224
       ],
       "typeVersion": 1,
       "credentials": {
         "ollamaApi": {
-          "id": "USclDUsNN9z5K0Bb",
-          "name": "Ollama account"
+          "id": "KLoaICSBpFR345xi",
+          "name": "host.docker.internal"
         }
       }
     },
@@ -242,14 +242,27 @@
         "schemaType": "manual",
         "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"tasks\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"task_id\": {\"type\": \"string\"},\n          \"tool\": {\"type\": \"string\"},\n          \"task_description\": {\"type\": \"string\"},\n          \"params\": {\"type\": \"object\"},\n          \"dependencies\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}}\n        },\n        \"required\": [\"task_id\", \"tool\", \"task_description\", \"params\"]\n      }\n    }\n  },\n  \"required\": [\"tasks\"]\n}"
       },
-      "id": "151cec80-1fad-45f8-9b4a-cfbfb8224409",
+      "id": "54161e8f-baf6-4ff0-930c-5a788409c91f",
       "name": "tasks-parser",
       "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
       "position": [
-        272,
+        1792,
         224
       ],
       "typeVersion": 1.3
+    },
+    {
+      "parameters": {
+        "jsCode": "// N8N Code Node - Convert task parameter references to standard $ref format\n\nconst items = $input.all();\nconst results = [];\n\n// Helper function to extract task references from various patterns\nfunction extractTaskReference(value) {\n  if (typeof value !== 'string') return null;\n  \n  // Pattern 1: $[tasks.0.results]\n  const pattern1 = /\\$\\[tasks\\.(\\d+)\\.results\\]/;\n  // Pattern 2: $tasks.0.results\n  const pattern2 = /\\$tasks\\.(\\d+)\\.results/;\n  // Pattern 3: #/tasks/0/results\n  const pattern3 = /#\\/tasks\\/(\\d+)\\/results/;\n  // Pattern 4: $['tasks'][0]['results']\n  const pattern4 = /\\$\\['tasks'\\]\\[(\\d+)\\]\\['results'\\]/;\n  \n  let match = value.match(pattern1) || value.match(pattern2) || \n              value.match(pattern3) || value.match(pattern4);\n  \n  if (match) {\n    return parseInt(match[1]);\n  }\n  \n  return null;\n}\n\n// Helper function to find task index by task_id\nfunction findTaskIndex(tasks, taskId) {\n  return tasks.findIndex(task => task.task_id === taskId);\n}\n\n// Helper function to recursively process params\nfunction processParams(params, task, tasks) {\n  if (typeof params !== 'object' || params === null) {\n    return params;\n  }\n  \n  // Check if it's already in correct $ref format\n  if (params.$ref && typeof params.$ref === 'string') {\n    const refIndex = extractTaskReference(params.$ref);\n    if (refIndex !== null) {\n      return { '$ref': `#/tasks/${refIndex}/results` };\n    }\n    return params;\n  }\n  \n  // Handle arrays\n  if (Array.isArray(params)) {\n    return params.map(item => processParams(item, task, tasks));\n  }\n  \n  // Handle objects\n  const processed = {};\n  for (const [key, value] of Object.entries(params)) {\n    if (typeof value === 'string') {\n      const refIndex = extractTaskReference(value);\n      if (refIndex !== null) {\n        // Validate against dependencies\n        if (task.dependencies && task.dependencies.length > 0) {\n          // Find the actual task index from dependencies\n          const dependencyTaskId = task.dependencies[0]; // Using first dependency for the reference\n          const actualIndex = findTaskIndex(tasks, dependencyTaskId);\n          \n          if (actualIndex !== -1) {\n            processed[key] = { '$ref': `#/tasks/${actualIndex}/results` };\n          } else {\n            // Fallback to extracted index if dependency not found\n            processed[key] = { '$ref': `#/tasks/${refIndex}/results` };\n          }\n        } else {\n          // No dependencies, use extracted index\n          processed[key] = { '$ref': `#/tasks/${refIndex}/results` };\n        }\n      } else {\n        processed[key] = value;\n      }\n    } else if (typeof value === 'object' && value !== null) {\n      processed[key] = processParams(value, task, tasks);\n    } else {\n      processed[key] = value;\n    }\n  }\n  \n  return processed;\n}\n\n// Process each item\nfor (const item of items) {\n  const data = item.json;\n  \n  if (data.output && data.output.tasks && Array.isArray(data.output.tasks)) {\n    const tasks = data.output.tasks;\n    \n    // Process each task\n    const processedTasks = tasks.map(task => {\n      if (task.params) {\n        return {\n          ...task,\n          params: processParams(task.params, task, tasks)\n        };\n      }\n      return task;\n    });\n    \n    results.push({\n      json: {\n        output: {\n          tasks: processedTasks\n        }\n      }\n    });\n  } else {\n    // Return unchanged if structure doesn't match\n    results.push(item);\n  }\n}\n\nreturn results;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2000,
+        0
+      ],
+      "id": "318c448d-36d1-4c8d-9682-12a71e1f72ce",
+      "name": "refactor-params"
     }
   ],
   "pinData": {
@@ -257,7 +270,7 @@
       {
         "json": {
           "action": "sendMessage",
-          "chatInput": "add two numbers 342 and 565",
+          "chatInput": "add numbers 3 and 5 and then encrypt answer before returning",
           "sessionId": "c26a80ddbae849bf8a500db8975814d2"
         }
       }
@@ -334,7 +347,7 @@
       "main": [
         [
           {
-            "node": "Validate Task Plan",
+            "node": "refactor-params",
             "type": "main",
             "index": 0
           }
@@ -373,16 +386,28 @@
           }
         ]
       ]
+    },
+    "refactor-params": {
+      "main": [
+        [
+          {
+            "node": "Validate Task Plan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "d265c803-5e76-420c-93da-f9f9a1eb7c09",
+  "versionId": "f4f75336-3792-4458-8b06-8e4316c55fa8",
   "meta": {
-    "instanceId": "da3a9c976fa04718d7c8e4d3120e91256531306773cca999fd545bae2261f29b"
+    "templateCredsSetupCompleted": true,
+    "instanceId": "45c417bac78415cc82936bcd15e18b8c6e14faf1263d26de9f0ef5352823a723"
   },
-  "id": "K0AM6zEmBhCGqeD2",
+  "id": "GEBDF9CyCC6Oho4O",
   "tags": []
 }

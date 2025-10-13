@@ -5,12 +5,12 @@
       "parameters": {
         "options": {}
       },
-      "id": "79b05f31-c2f3-4a88-8e84-6e599802a1cc",
+      "id": "79702d30-a05d-45e0-b55d-fe0ea480f619",
       "name": "When chat message received",
       "type": "@n8n/n8n-nodes-langchain.chatTrigger",
       "position": [
-        -448,
-        -32
+        0,
+        0
       ],
       "webhookId": "fe018de1-ca34-4d9d-93d5-aa7adeaf35aa",
       "typeVersion": 1.3
@@ -19,10 +19,38 @@
       "parameters": {
         "workflowId": {
           "__rl": true,
+          "value": "UtC2ATWAFbknsBRR",
           "mode": "list",
-          "value": "K0AM6zEmBhCGqeD2",
-          "cachedResultUrl": "/workflow/K0AM6zEmBhCGqeD2",
-          "cachedResultName": "tasks-extractor-subworkflow"
+          "cachedResultUrl": "/workflow/UtC2ATWAFbknsBRR",
+          "cachedResultName": "task-executor-subworkflow"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "id": "bc88eb52-59a5-4aec-bfda-2b290feb34dc",
+      "name": "Call task-executor-subworkflow",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "position": [
+        448,
+        0
+      ],
+      "typeVersion": 1.2
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "GEBDF9CyCC6Oho4O",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/GEBDF9CyCC6Oho4O",
+          "cachedResultName": "tasks-planner-subworkflow"
         },
         "workflowInputs": {
           "value": {},
@@ -30,42 +58,51 @@
         },
         "options": {}
       },
-      "id": "310f3714-bd95-4de3-bd51-63d37a930ca7",
-      "name": "Call 'tasks-extractor-subworkflow'",
+      "id": "affce92e-3311-477e-9e2a-8c2fd5b49d83",
+      "name": "Call 'tasks-planner-subworkflow'",
       "type": "n8n-nodes-base.executeWorkflow",
       "position": [
-        -224,
-        -32
+        224,
+        0
       ],
       "typeVersion": 1.3
     },
     {
       "parameters": {
-        "workflowId": {
-          "__rl": true,
-          "value": "gqPWhw75d7QYnifq",
-          "mode": "list",
-          "cachedResultUrl": "/workflow/gqPWhw75d7QYnifq",
-          "cachedResultName": "task-executor-subworkflow"
-        },
-        "workflowInputs": {
-          "value": {},
-          "schema": [],
-          "mappingMode": "defineBelow",
-          "matchingColumns": [],
-          "attemptToConvertTypes": false,
-          "convertFieldsToString": true
-        },
+        "promptType": "define",
+        "text": "=Original Request: {{ $json.chatInput.chatInput }}\n\nTool Execution Response: {{ JSON.stringify($json.taskResults) }}",
+        "options": {
+          "systemMessage": "You are a helpful assistant, Analyze user request and then Summarize Tool execution Response in short and return final short and exact answer in response to Original request."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        656,
+        0
+      ],
+      "id": "2e865c5f-6d85-415d-9df8-8005878c27e6",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "Qwen2.5:latest",
         "options": {}
       },
-      "id": "927c489b-c0d2-43cd-88f3-240b072a6f7c",
-      "name": "Call task-executor-subworkflow",
-      "type": "n8n-nodes-base.executeWorkflow",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
       "position": [
-        0,
-        -32
+        656,
+        160
       ],
-      "typeVersion": 1.2
+      "id": "f7e12b14-f85b-4ca4-b9bb-130215c011a6",
+      "name": "Ollama Chat Model",
+      "credentials": {
+        "ollamaApi": {
+          "id": "KLoaICSBpFR345xi",
+          "name": "host.docker.internal"
+        }
+      }
     }
   ],
   "pinData": {},
@@ -74,19 +111,41 @@
       "main": [
         [
           {
-            "node": "Call 'tasks-extractor-subworkflow'",
+            "node": "Call 'tasks-planner-subworkflow'",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Call 'tasks-extractor-subworkflow'": {
+    "Call 'tasks-planner-subworkflow'": {
       "main": [
         [
           {
             "node": "Call task-executor-subworkflow",
             "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call task-executor-subworkflow": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
             "index": 0
           }
         ]
@@ -97,10 +156,11 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "0d049ffc-a4a4-4661-969e-31da673c18ea",
+  "versionId": "d46c77ce-e264-45e7-8c14-247df0c4ea5e",
   "meta": {
-    "instanceId": "da3a9c976fa04718d7c8e4d3120e91256531306773cca999fd545bae2261f29b"
+    "templateCredsSetupCompleted": true,
+    "instanceId": "45c417bac78415cc82936bcd15e18b8c6e14faf1263d26de9f0ef5352823a723"
   },
-  "id": "jQSnj8ejcsOy5rQ0",
+  "id": "33ZySdz2ISdJuRx6",
   "tags": []
 }
